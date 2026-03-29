@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Workout | Workout Companion{% endblock %}
+{% block content %}
+  <section class="page-header">
+    <p>Active workout</p>
+    <h1 id="workout-title">Workout Shell</h1>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Status</h2>
+      <div id="workout-shell">
+        <p>Loading workout state...</p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    window.__workoutPage = {
+      workoutId: {{ workout_id | tojson }},
+      serverWorkout: {{ server_workout | tojson }}
+    };
+  </script>
+  <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='workout.js') }}"></script>
+{% endblock %}

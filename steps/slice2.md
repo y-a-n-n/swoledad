@@ -140,3 +140,11 @@ Suggested dashboard response shape:
 - The user can start and resume a workout draft through the local-first flow required by the plan.
 - Draft creation is persisted locally immediately and converges to the server without duplicate workouts.
 - The dashboard is stable enough to host later features without API redesign.
+
+## Dev Diary
+
+- Reassigned `/` from the initial admin placeholder to the dashboard once the app gained its first workout-facing slice. The admin surface remains at `/admin`.
+- Kept draft creation aligned with the later queue semantics by requiring `operation_id`, `workout_id`, and `client_timestamp` even before the general batch replay endpoint exists.
+- Implemented a small IndexedDB layer with `active_workout_drafts` and `pending_draft_creation` stores so the browser can create and restore a local draft immediately, then replay the same draft-creation envelope when online.
+- The server-side dashboard payload already includes placeholders for pending imports, weekly stats, and sync status so later slices can extend the response shape instead of replacing it.
+- The first implementation deliberately stores only one practical local draft path even though the object store can hold more; the dashboard resumes the most recent local draft, which matches the slice requirement that only one active draft be resumable for now.

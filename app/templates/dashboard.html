@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Dashboard | Workout Companion{% endblock %}
+{% block content %}
+  <section class="page-header">
+    <p>Personal Workout Companion</p>
+    <h1>Dashboard</h1>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Start Workout</h2>
+      <form id="start-workout-form">
+        <label>
+          Workout type
+          <select name="type" id="type-selector">
+            {% for option in ["strength", "cross_training", "imported_cardio"] %}
+              <option value="{{ option }}" {% if option == dashboard.last_workout_type %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="submit">Start workout</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Resume Draft</h2>
+      <div id="resume-card">
+        {% if dashboard.active_draft %}
+          <p>Server draft: {{ dashboard.active_draft.type }} started {{ dashboard.active_draft.started_at }}</p>
+          <a href="/workouts/{{ dashboard.active_draft.workout_id }}">Resume current draft</a>
+        {% else %}
+          <p>No draft on the server yet.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Pending Imports</h2>
+      <p id="pending-imports-placeholder">No pending imports yet.</p>
+    </section>
+
+    <section class="card">
+      <h2>Weekly Summary</h2>
+      <p id="weekly-summary-placeholder">Weekly stats will appear here.</p>
+    </section>
+
+    <section class="card">
+      <h2>Sync Status</h2>
+      <p id="sync-status-placeholder">Garmin status: {{ dashboard.sync_status.last_status or "idle" }}</p>
+    </section>
+  </div>
+
+  <script>
+    window.__dashboardData = {{ dashboard | tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+{% endblock %}

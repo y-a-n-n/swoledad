@@ -6,6 +6,7 @@ import pytest
 
 from app.config_service import ValidationError, serialize_json, update_big3, update_inventory
 from app.db import run_with_retry
+from app.validation import validate_uuid, validate_workout_type
 
 
 def test_config_serialization_is_stable():
@@ -53,3 +54,16 @@ def test_lock_retry_raises_non_lock_errors():
             retries=3,
             base_delay_seconds=0,
         )
+
+
+def test_workout_type_validation():
+    assert validate_workout_type("strength") == "strength"
+    with pytest.raises(ValueError):
+        validate_workout_type("hiit")
+
+
+def test_uuid_validation():
+    valid = "0ecbb95d-bf0e-4fa9-923b-5bb3a8bb576a"
+    assert validate_uuid(valid, "workout_id") == valid
+    with pytest.raises(ValueError):
+        validate_uuid("nope", "workout_id")
