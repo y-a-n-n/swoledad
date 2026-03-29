@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from flask import Blueprint, render_template
 
+from .analytics_service import get_analytics_payload
 from .dashboard_service import get_dashboard_payload
 from .config_service import get_config
 from .db import get_db
@@ -38,3 +39,8 @@ def workout_summary_page(workout_id: str):
     except LookupError:
         server_workout = None
     return render_template("summary.html", workout_id=workout_id, server_workout=server_workout)
+
+
+@pages_bp.get("/analytics")
+def analytics_page():
+    return render_template("analytics.html", analytics=get_analytics_payload(get_db()))

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Analytics | Workout Companion{% endblock %}
+{% block content %}
+  <section class="page-header">
+    <p>History and trends</p>
+    <h1>Analytics</h1>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Big 3 Estimated 1RM</h2>
+      {% for lift, items in analytics.big3_estimated_1rm_trend.items() %}
+        <h3>{{ lift }}</h3>
+        {% if items %}
+          {% for item in items %}
+            <p>{{ item.started_at }}: {{ item.estimated_1rm }} kg</p>
+          {% endfor %}
+        {% else %}
+          <p>No data yet.</p>
+        {% endif %}
+      {% endfor %}
+    </section>
+
+    <section class="card">
+      <h2>Cardio Personal Bests</h2>
+      {% if analytics.cardio_personal_bests %}
+        {% for item in analytics.cardio_personal_bests %}
+          <p>{{ item.activity_type }}: {{ item.distance_meters }} m on {{ item.started_at }}</p>
+        {% endfor %}
+      {% else %}
+        <p>No cardio data yet.</p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <h2>Calories Per Minute</h2>
+      {% if analytics.calories_per_minute_trend %}
+        {% for item in analytics.calories_per_minute_trend %}
+          <p>{{ item.started_at }}: {{ item.calories_per_minute }} cal/min</p>
+        {% endfor %}
+      {% else %}
+        <p>No calorie data yet.</p>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}

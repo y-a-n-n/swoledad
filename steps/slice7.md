@@ -90,3 +90,11 @@ If a formula choice is needed for estimated 1RM, document it explicitly in code 
 - The analytics page is manually useful.
 - Finalized history, populated by earlier slices, powers analytics without leaking draft data.
 - The first implementation can be demoed end to end: config, workout logging, offline recovery, Garmin import review, and analytics.
+
+## Dev Diary
+
+- Added analytics as a read-only service with small, explicit query functions instead of trying to fold it into the dashboard or route layer. That keeps the final slice focused on stable reporting logic.
+- Chose the Epley formula for estimated 1RM and locked that choice into tests so the trend stays stable if the implementation evolves later.
+- Cardio analytics read from `external_activities` rather than trying to infer metrics from linked workouts. That avoids double-counting linked imports and keeps the cardio source of truth consistent with the Garmin reconciliation model.
+- The analytics fixture initially violated the one-to-one `linked_workout_id` constraint; fixing that reinforced that the schema rule is doing real work, not just sitting in the database unused.
+- Weekly dashboard stats are still intentionally lightweight, but the dashboard now consumes finalized-history-aware data instead of returning an empty placeholder for that section.
