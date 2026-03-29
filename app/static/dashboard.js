@@ -198,6 +198,24 @@ async function hydrateDashboard() {
   }
 }
 
+async function triggerExternalSync() {
+  const response = await fetch("/api/external/sync", { method: "POST" });
+  if (!response.ok) {
+    return;
+  }
+  const payload = await response.json();
+  const syncStatus = document.getElementById("sync-status-placeholder");
+  if (syncStatus) {
+    syncStatus.textContent = `Garmin status: ${payload.last_status || "idle"}${payload.last_error ? ` (${payload.last_error})` : ""}`;
+  }
+  const imports = document.getElementById("pending-imports-placeholder");
+  if (imports && payload.changed_pending_imports.length > 0) {
+    imports.innerHTML = payload.changed_pending_imports
+      .map((item) => `<p>Pending import ${item.provider_activity_id}: ${item.status}</p>`)
+      .join("");
+  }
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -242,6 +260,9 @@ async function startWorkout(event) {
 }
 
 document.getElementById("start-workout-form")?.addEventListener("submit", startWorkout);
+document.getElementById("sync-now")?.addEventListener("click", () => {
+  void triggerExternalSync();
+});
 window.addEventListener("online", () => {
   void hydrateDashboard();
 });

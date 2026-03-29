@@ -154,3 +154,11 @@ record success checkpoint
 - Garmin data can be ingested repeatably into `external_activities`.
 - Sync status is visible to the user.
 - The app can demonstrate imported activity discovery before review actions are added.
+
+## Dev Diary
+
+- Kept all Garmin-specific concerns behind `garmin_adapter.py`, including the bootstrap/token-path configuration shape and error classes. The rest of the app only sees normalized activities plus stable sync failure categories.
+- The sync service writes `last_attempted_sync_at` before talking to Garmin, then updates `last_successful_sync_at` only after the full fetch-and-upsert pass completes. That ordering is what the plan requires for safe recovery after partial failure.
+- Normalization stores the full raw payload JSON on every `external_activities` row for debugging, while the dashboard and pending-import APIs only expose the normalized fields needed by the app.
+- Re-fetching the overlap window is safe because upsert is keyed on `(provider, provider_activity_id)`. The tests explicitly verify that syncing the same Garmin activity twice does not create duplicate rows.
+- I left reconciliation intentionally conservative for this slice: imported activities become `pending_review` by default unless they were already linked. Slice 6 can now build accept/link/dismiss behavior on top of real ingested rows instead of changing the ingestion model itself.

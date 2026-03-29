@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from http import HTTPStatus
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 
 from .config_service import get_config
 from .dashboard_service import get_dashboard_payload
 from .db import get_db
+from .external_sync import list_pending_imports, maybe_sync_garmin_activities
 from .finalize_service import finalize_workout
 from .plate_loading import calculate_plate_loading
 from .queue_service import process_operation_batch
@@ -68,6 +69,17 @@ def post_client_operations():
     except ValueError as exc:
         return jsonify({"error": str(exc)}), HTTPStatus.BAD_REQUEST
     return jsonify({"acks": acks})
+
+
+@workouts_bp.post("/api/external/sync")
+def post_external_sync():
+    payload = maybe_sync_garmin_activities(get_db(), dict(current_app.config))
+    return jsonify(payload)
+
+
+@workouts_bp.get("/api/external/pending-imports")
+def get_pending_imports():
+    return jsonify({"items": list_pending_imports(get_db())})
 
 
 @workouts_bp.put("/api/workouts/<workout_id>/sets/<set_id>")

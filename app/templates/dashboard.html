@@ -36,7 +36,15 @@
 
     <section class="card">
       <h2>Pending Imports</h2>
-      <p id="pending-imports-placeholder">No pending imports yet.</p>
+      <div id="pending-imports-placeholder">
+        {% if dashboard.pending_imports %}
+          {% for item in dashboard.pending_imports %}
+            <p>{{ item.activity_type }} at {{ item.started_at }}</p>
+          {% endfor %}
+        {% else %}
+          <p>No pending imports yet.</p>
+        {% endif %}
+      </div>
     </section>
 
     <section class="card">
@@ -46,7 +54,11 @@
 
     <section class="card">
       <h2>Sync Status</h2>
-      <p id="sync-status-placeholder">Garmin status: {{ dashboard.sync_status.last_status or "idle" }}</p>
+      <p id="sync-status-placeholder">
+        Garmin status: {{ dashboard.sync_status.last_status or "idle" }}
+        {% if dashboard.sync_status.last_error %}({{ dashboard.sync_status.last_error }}){% endif %}
+      </p>
+      <button type="button" id="sync-now">Sync now</button>
     </section>
   </div>
 

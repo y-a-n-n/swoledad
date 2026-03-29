@@ -3,6 +3,8 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
+from .external_sync import get_sync_status, list_pending_imports
+
 
 def get_dashboard_payload(connection: sqlite3.Connection) -> dict[str, Any]:
     last_workout_type_row = connection.execute(
@@ -28,7 +30,7 @@ def get_dashboard_payload(connection: sqlite3.Connection) -> dict[str, Any]:
             if active_draft_row
             else None
         ),
-        "pending_imports": [],
+        "pending_imports": list_pending_imports(connection),
         "weekly_stats": {},
-        "sync_status": {"provider": "garmin", "last_status": None},
+        "sync_status": get_sync_status(connection),
     }
