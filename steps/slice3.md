@@ -135,3 +135,13 @@ History-dependent behavior in this slice should be validated with seeded finaliz
 - A user can complete most of a manual workout draft while online.
 - Suggestions, prefill, and plate loading are deterministic and covered by tests.
 - No finalize behavior is required yet for the slice to feel usable.
+
+## Dev Diary
+
+- Moved the important rules into server-side services instead of trying to make the browser authoritative. That keeps set validation, suggestion ranking, Big 3 prefill, and plate-loading semantics reusable for the later offline replay path.
+- Suggestions intentionally read finalized `workouts` plus `workout_sets` directly rather than `exercise_dictionary`, because the plan delays dictionary maintenance until finalization and explicitly says new exercise names must not be promoted before then.
+- The first test run exposed two useful implementation traps:
+  - `bench_press` does not map directly to the config key name, which is `bench_increment_kg`.
+  - Plate-loading logic must compare full achieved barbell weight, not just plate-only totals, or it will falsely report exact matches.
+- Timer persistence currently uses timestamp-based browser storage so reloads resume from absolute times rather than counters. That matches the plan’s anti-drift requirement and sets up the later move to a dedicated offline store cleanly.
+- The workout page remains intentionally plain, but it now exercises real APIs for set CRUD, autocomplete, prefill, and plate loading instead of faking those interactions locally.

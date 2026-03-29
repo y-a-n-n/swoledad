@@ -7,6 +7,7 @@ from http import HTTPStatus
 from typing import Any
 
 from .db import execute_write
+from .set_service import list_sets
 from .time_utils import utc_now
 from .validation import validate_uuid, validate_workout_type
 
@@ -94,7 +95,7 @@ def get_workout_payload(connection: sqlite3.Connection, workout_id: str) -> dict
         "source": row["source"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
-        "sets": [],
+        "sets": list_sets(connection, workout_id),
         "linked_external_metrics": (
             {
                 "external_activity_id": external["id"],

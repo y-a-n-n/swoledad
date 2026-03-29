@@ -13,6 +13,80 @@
         <p>Loading workout state...</p>
       </div>
     </section>
+
+    <section class="card">
+      <h2>Log Set</h2>
+      <form id="set-form">
+        <input type="hidden" name="set_id" id="set-id">
+        <label>
+          Exercise
+          <input type="text" name="exercise_name" id="exercise-name" list="exercise-suggestions" autocomplete="off">
+          <datalist id="exercise-suggestions"></datalist>
+        </label>
+        <div class="grid">
+          <label>
+            Sequence
+            <input type="number" name="sequence_index" id="sequence-index" value="0" min="0" step="1">
+          </label>
+          <label>
+            Set type
+            <select name="set_type" id="set-type">
+              <option value="normal">normal</option>
+              <option value="amrap">amrap</option>
+              <option value="for_time">for_time</option>
+            </select>
+          </label>
+          <label>
+            Weight (kg)
+            <input type="number" name="weight_kg" id="weight-kg" min="0" step="0.1">
+          </label>
+          <label>
+            Reps
+            <input type="number" name="reps" id="reps" min="0" step="1">
+          </label>
+          <label>
+            Duration (seconds)
+            <input type="number" name="duration_seconds" id="duration-seconds" min="0" step="1">
+          </label>
+        </div>
+        <div class="grid">
+          <button type="submit">Save set</button>
+          <button type="button" id="delete-set">Delete selected set</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Big 3 Prefill</h2>
+      <div class="grid">
+        <button type="button" class="prefill-button" data-lift="squat">Squat</button>
+        <button type="button" class="prefill-button" data-lift="bench_press">Bench Press</button>
+        <button type="button" class="prefill-button" data-lift="deadlift">Deadlift</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Plate Loading</h2>
+      <div id="plate-loading">Enter a weight to see plate loading.</div>
+    </section>
+
+    <section class="card">
+      <h2>Timer</h2>
+      <div class="grid">
+        <label>
+          Target rest (seconds)
+          <input type="number" id="timer-target" min="1" value="90">
+        </label>
+        <button type="button" id="start-timer">Start timer</button>
+        <button type="button" id="stop-timer">Stop timer</button>
+      </div>
+      <p id="timer-display">Timer idle.</p>
+    </section>
+
+    <section class="card">
+      <h2>Sets</h2>
+      <div id="set-list"></div>
+    </section>
   </div>
 
   <script>
