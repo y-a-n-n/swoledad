@@ -39,7 +39,15 @@
       <div id="pending-imports-placeholder">
         {% if dashboard.pending_imports %}
           {% for item in dashboard.pending_imports %}
-            <p>{{ item.activity_type }} at {{ item.started_at }}</p>
+            <div class="status" data-external-id="{{ item.id }}">
+              <p>{{ item.activity_type }} at {{ item.started_at }}</p>
+              <div class="grid">
+                <button type="button" class="accept-import" data-external-id="{{ item.id }}">Accept</button>
+                <button type="button" class="dismiss-import" data-external-id="{{ item.id }}">Dismiss</button>
+                <input type="text" class="link-workout-id" placeholder="Workout UUID">
+                <button type="button" class="link-import" data-external-id="{{ item.id }}">Link</button>
+              </div>
+            </div>
           {% endfor %}
         {% else %}
           <p>No pending imports yet.</p>

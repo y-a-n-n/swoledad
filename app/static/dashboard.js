@@ -216,6 +216,64 @@ async function triggerExternalSync() {
   }
 }
 
+async function refreshPendingImports() {
+  const response = await fetch("/api/external/pending-imports");
+  if (!response.ok) {
+    return;
+  }
+  const payload = await response.json();
+  const imports = document.getElementById("pending-imports-placeholder");
+  if (!imports) {
+    return;
+  }
+  if (payload.items.length === 0) {
+    imports.innerHTML = "<p>No pending imports yet.</p>";
+    return;
+  }
+  imports.innerHTML = payload.items
+    .map(
+      (item) => `
+        <div class="status" data-external-id="${item.id}">
+          <p>${item.activity_type} at ${item.started_at}</p>
+          <div class="grid">
+            <button type="button" class="accept-import" data-external-id="${item.id}">Accept</button>
+            <button type="button" class="dismiss-import" data-external-id="${item.id}">Dismiss</button>
+            <input type="text" class="link-workout-id" placeholder="Workout UUID">
+            <button type="button" class="link-import" data-external-id="${item.id}">Link</button>
+          </div>
+        </div>
+      `,
+    )
+    .join("");
+}
+
+async function handlePendingImportAction(event) {
+  const target = event.target.closest("button");
+  if (!target) {
+    return;
+  }
+  const externalId = target.dataset.externalId;
+  if (!externalId) {
+    return;
+  }
+  if (target.classList.contains("dismiss-import")) {
+    await fetch(`/api/external/pending-imports/${externalId}/dismiss`, { method: "POST" });
+  } else if (target.classList.contains("accept-import")) {
+    await fetch(`/api/external/pending-imports/${externalId}/accept`, { method: "POST" });
+  } else if (target.classList.contains("link-import")) {
+    const container = target.closest("[data-external-id]");
+    const workoutId = container?.querySelector(".link-workout-id")?.value;
+    await fetch(`/api/external/pending-imports/${externalId}/link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workout_id: workoutId }),
+    });
+  } else {
+    return;
+  }
+  await refreshPendingImports();
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -262,6 +320,9 @@ async function startWorkout(event) {
 document.getElementById("start-workout-form")?.addEventListener("submit", startWorkout);
 document.getElementById("sync-now")?.addEventListener("click", () => {
   void triggerExternalSync();
+});
+document.getElementById("pending-imports-placeholder")?.addEventListener("click", (event) => {
+  void handlePendingImportAction(event);
 });
 window.addEventListener("online", () => {
   void hydrateDashboard();

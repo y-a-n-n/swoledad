@@ -121,3 +121,11 @@ Expected outcome for accepted imported cardio:
 - Imported activities can move cleanly from discovery to accepted, linked, or dismissed.
 - The user can exercise the entire import review flow manually.
 - Reconciliation behavior is covered by automated tests, including edge cases.
+
+## Dev Diary
+
+- Split reconciliation out of the sync service into its own module. That made it straightforward to test compatibility rules, candidate lookup, auto-link behavior, and the accept/link/dismiss actions without needing Garmin fetches in every test.
+- Auto-link now happens during sync when there is exactly one compatible workout in the 15-minute window. Ambiguous matches stay `pending_review`, which keeps the behavior conservative and visible.
+- Dismissed imports required a subtle but important guard: re-syncing the same provider activity must preserve `dismissed` rather than reconciling it back to `pending_review`. The tests caught that regression directly.
+- Accept intentionally refuses Garmin strength imports because the plan only allows those to link to an existing manual `strength` workout. That rule is now enforced centrally in the reconciliation service.
+- The dashboard tray remains minimal visually, but it now exercises the real review actions end to end instead of waiting for a separate frontend rewrite.

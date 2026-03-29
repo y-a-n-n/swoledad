@@ -11,6 +11,11 @@ from .external_sync import list_pending_imports, maybe_sync_garmin_activities
 from .finalize_service import finalize_workout
 from .plate_loading import calculate_plate_loading
 from .queue_service import process_operation_batch
+from .reconciliation_service import (
+    accept_external_activity,
+    dismiss_external_activity,
+    link_external_activity,
+)
 from .set_service import delete_set, upsert_set
 from .suggestions import get_big3_prefill, get_exercise_suggestions
 from .workout_service import create_draft, get_workout_payload
@@ -80,6 +85,43 @@ def post_external_sync():
 @workouts_bp.get("/api/external/pending-imports")
 def get_pending_imports():
     return jsonify({"items": list_pending_imports(get_db())})
+
+
+@workouts_bp.post("/api/external/pending-imports/<external_activity_id>/dismiss")
+def post_pending_import_dismiss(external_activity_id: str):
+    try:
+        payload = dismiss_external_activity(get_db(), external_activity_id)
+    except LookupError as exc:
+        return jsonify({"error": str(exc)}), HTTPStatus.NOT_FOUND
+    return jsonify(payload)
+
+
+@workouts_bp.post("/api/external/pending-imports/<external_activity_id>/accept")
+def post_pending_import_accept(external_activity_id: str):
+    request_payload = request.get_json(silent=True) or {}
+    try:
+        payload = accept_external_activity(
+            get_db(),
+            external_activity_id,
+            type_override=request_payload.get("type_override"),
+        )
+    except LookupError as exc:
+        return jsonify({"error": str(exc)}), HTTPStatus.NOT_FOUND
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), HTTPStatus.BAD_REQUEST
+    return jsonify(payload)
+
+
+@workouts_bp.post("/api/external/pending-imports/<external_activity_id>/link")
+def post_pending_import_link(external_activity_id: str):
+    request_payload = request.get_json(silent=True) or {}
+    try:
+        payload = link_external_activity(get_db(), external_activity_id, request_payload.get("workout_id"))
+    except LookupError as exc:
+        return jsonify({"error": str(exc)}), HTTPStatus.NOT_FOUND
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), HTTPStatus.BAD_REQUEST
+    return jsonify(payload)
 
 
 @workouts_bp.put("/api/workouts/<workout_id>/sets/<set_id>")

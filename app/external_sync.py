@@ -9,6 +9,7 @@ from typing import Any
 
 from .db import execute_write
 from .garmin_adapter import GarminAuthError, GarminNetworkError, GarminParseError, build_garmin_adapter
+from .reconciliation_service import reconcile_external_activity
 from .time_utils import utc_now
 
 COOLDOWN_MINUTES = 10
@@ -76,7 +77,8 @@ def sync_garmin_activities(connection: sqlite3.Connection, app_config: dict[str,
         changed_rows = []
         for activity in activities:
             normalized = normalize_garmin_activity(activity)
-            changed_rows.append(upsert_external_activity(connection, normalized))
+            changed = upsert_external_activity(connection, normalized)
+            changed_rows.append(reconcile_external_activity(connection, changed["id"]))
         update_checkpoint(
             connection,
             provider="garmin",
@@ -120,7 +122,11 @@ def upsert_external_activity(connection: sqlite3.Connection, activity: dict[str,
         (activity["provider"], activity["provider_activity_id"]),
     ).fetchone()
     activity_id = existing["id"] if existing else str(uuid.uuid4())
-    status = existing["status"] if existing and existing["status"] == "linked" else "pending_review"
+    status = (
+        existing["status"]
+        if existing and existing["status"] in {"linked", "dismissed"}
+        else "pending_review"
+    )
     now = utc_now()
     execute_write(
         connection,
@@ -134,7 +140,7 @@ def upsert_external_activity(connection: sqlite3.Connection, activity: dict[str,
         ON CONFLICT(provider, provider_activity_id) DO UPDATE SET
           activity_type = excluded.activity_type,
           status = CASE
-            WHEN external_activities.status = 'linked' THEN external_activities.status
+            WHEN external_activities.status IN ('linked', 'dismissed') THEN external_activities.status
             ELSE excluded.status
           END,
           started_at = excluded.started_at,
