@@ -86,6 +86,20 @@ def test_failed_sync_updates_attempted_not_successful(app):
     assert checkpoint["last_successful_sync_at"] is None
 
 
+def test_partial_sync_failure_rolls_back_ingested_rows(app):
+    broken_payload = {"activityId": "broken"}
+    with app.app_context():
+        from app.db import get_db
+
+        result = sync_garmin_activities(
+            get_db(),
+            _app_config(FakeGarminAdapter([_activity(), broken_payload])),
+        )
+        rows = get_db().execute("SELECT COUNT(*) FROM external_activities").fetchone()[0]
+    assert result["last_status"] == "upstream_schema_failure"
+    assert rows == 0
+
+
 def test_post_external_sync_returns_status_and_changed_imports(client, app):
     app.config["GARMIN_ADAPTER_FACTORY"] = lambda: FakeGarminAdapter([_activity()])
     response = client.post("/api/external/sync")

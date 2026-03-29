@@ -271,18 +271,22 @@ document.getElementById("set-list")?.addEventListener("click", (event) => {
     return;
   }
   const setId = target.dataset.setId;
-  const workout = window.__workoutPage.serverWorkout;
-  const selected = workout?.sets?.find((item) => item.id === setId);
-  if (!selected) {
-    return;
-  }
-  document.getElementById("set-id").value = selected.id;
-  document.getElementById("exercise-name").value = selected.exercise_name;
-  document.getElementById("sequence-index").value = selected.sequence_index;
-  document.getElementById("set-type").value = selected.set_type;
-  document.getElementById("weight-kg").value = selected.weight_kg ?? "";
-  document.getElementById("reps").value = selected.reps ?? "";
-  document.getElementById("duration-seconds").value = selected.duration_seconds ?? "";
+  void (async () => {
+    const draft = await window.workoutDraftStorage.loadDraft(currentWorkoutId());
+    const localSelected = draft?.set_rows?.find((item) => item.id === setId);
+    const workout = window.__workoutPage.serverWorkout;
+    const selected = localSelected || workout?.sets?.find((item) => item.id === setId);
+    if (!selected) {
+      return;
+    }
+    document.getElementById("set-id").value = selected.id;
+    document.getElementById("exercise-name").value = selected.exercise_name;
+    document.getElementById("sequence-index").value = selected.sequence_index;
+    document.getElementById("set-type").value = selected.set_type;
+    document.getElementById("weight-kg").value = selected.weight_kg ?? "";
+    document.getElementById("reps").value = selected.reps ?? "";
+    document.getElementById("duration-seconds").value = selected.duration_seconds ?? "";
+  })();
 });
 
 window.addEventListener("online", () => {

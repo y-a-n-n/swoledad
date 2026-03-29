@@ -137,6 +137,45 @@ async function removeDraft(workoutId) {
   });
 }
 
+async function reconcileDraftFromServer(workoutId, appliedStatuses) {
+  const draft = await loadDraft(workoutId);
+  if (!draft) {
+    return;
+  }
+  const remainingOperationIds = draft.pending_operation_ids.filter((id) => !appliedStatuses.has(id));
+  if (remainingOperationIds.length === 0 && draft.status === "finalized-pending-sync") {
+    await removeDraft(workoutId);
+    return;
+  }
+
+  let nextDraft = {
+    ...draft,
+    pending_operation_ids: remainingOperationIds,
+  };
+  if (remainingOperationIds.length === 0 && navigator.onLine) {
+    const response = await fetch(`/api/workouts/${workoutId}`);
+    if (response.ok) {
+      const workout = await response.json();
+      nextDraft = {
+        ...nextDraft,
+        workout_type: workout.type,
+        status: workout.status,
+        started_at: workout.started_at,
+        set_rows: workout.sets.map((item) => ({
+          id: item.id,
+          exercise_name: item.exercise_name,
+          sequence_index: item.sequence_index,
+          weight_kg: item.weight_kg,
+          reps: item.reps,
+          duration_seconds: item.duration_seconds,
+          set_type: item.set_type,
+        })),
+      };
+    }
+  }
+  await upsertDraftOnly(nextDraft);
+}
+
 async function flushQueuedOperations() {
   if (!navigator.onLine) {
     return false;
@@ -155,10 +194,21 @@ async function flushQueuedOperations() {
     return false;
   }
   const payload = await response.json();
+  const resolvedOperationIds = new Set();
+  const affectedWorkoutIds = new Set();
   for (const ack of payload.acks) {
     if (ack.status === "applied" || ack.status === "rejected") {
+      resolvedOperationIds.add(ack.operation_id);
       await removeQueuedOperation(ack.operation_id);
     }
+  }
+  for (const operation of operations) {
+    if (resolvedOperationIds.has(operation.operation_id)) {
+      affectedWorkoutIds.add(operation.workout_id);
+    }
+  }
+  for (const workoutId of affectedWorkoutIds) {
+    await reconcileDraftFromServer(workoutId, resolvedOperationIds);
   }
   return payload.acks.every((ack) => ack.status === "applied");
 }

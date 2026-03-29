@@ -19,19 +19,22 @@ COMPATIBLE_WORKOUT_TYPES = {
 ACCEPTABLE_OVERRIDE_TYPES = {"imported_cardio", "cross_training"}
 
 
-def reconcile_external_activity(connection: sqlite3.Connection, external_activity_id: str) -> dict[str, Any]:
+def reconcile_external_activity(
+    connection: sqlite3.Connection, external_activity_id: str, *, commit: bool = True
+) -> dict[str, Any]:
     activity = _load_external_activity(connection, external_activity_id)
     if activity["linked_workout_id"] or activity["status"] == "dismissed":
         return _serialize_external_activity(activity)
     candidates = find_candidate_workouts(connection, external_activity_id)
     if len(candidates) == 1:
-        return link_external_activity(connection, external_activity_id, candidates[0]["id"])
+        return link_external_activity(connection, external_activity_id, candidates[0]["id"], commit=commit)
     execute_write(
         connection,
         "UPDATE external_activities SET status = 'pending_review', updated_at = ? WHERE id = ?",
         (utc_now(), external_activity_id),
     )
-    connection.commit()
+    if commit:
+        connection.commit()
     return _serialize_external_activity(_load_external_activity(connection, external_activity_id))
 
 
@@ -55,7 +58,9 @@ def find_candidate_workouts(connection: sqlite3.Connection, external_activity_id
     return [dict(row) for row in rows]
 
 
-def dismiss_external_activity(connection: sqlite3.Connection, external_activity_id: str) -> dict[str, Any]:
+def dismiss_external_activity(
+    connection: sqlite3.Connection, external_activity_id: str, *, commit: bool = True
+) -> dict[str, Any]:
     activity = _load_external_activity(connection, external_activity_id)
     if activity["status"] == "dismissed":
         return _serialize_external_activity(activity)
@@ -69,7 +74,8 @@ def dismiss_external_activity(connection: sqlite3.Connection, external_activity_
         """,
         (timestamp, timestamp, external_activity_id),
     )
-    connection.commit()
+    if commit:
+        connection.commit()
     return _serialize_external_activity(_load_external_activity(connection, external_activity_id))
 
 
@@ -78,6 +84,7 @@ def accept_external_activity(
     external_activity_id: str,
     *,
     type_override: str | None = None,
+    commit: bool = True,
 ) -> dict[str, Any]:
     activity = _load_external_activity(connection, external_activity_id)
     if activity["linked_workout_id"]:
@@ -105,7 +112,8 @@ def accept_external_activity(
         """,
         (workout_id, now, external_activity_id),
     )
-    connection.commit()
+    if commit:
+        connection.commit()
     return {
         "workout": _load_workout(connection, workout_id),
         "external_activity": _serialize_external_activity(_load_external_activity(connection, external_activity_id)),
@@ -116,6 +124,8 @@ def link_external_activity(
     connection: sqlite3.Connection,
     external_activity_id: str,
     workout_id: str,
+    *,
+    commit: bool = True,
 ) -> dict[str, Any]:
     activity = _load_external_activity(connection, external_activity_id)
     if activity["linked_workout_id"] == workout_id:
@@ -142,7 +152,8 @@ def link_external_activity(
         """,
         (workout_id, utc_now(), external_activity_id),
     )
-    connection.commit()
+    if commit:
+        connection.commit()
     return _serialize_external_activity(_load_external_activity(connection, external_activity_id))
 
 

@@ -59,14 +59,6 @@ def normalize_garmin_activity(payload: dict[str, Any]) -> dict[str, Any]:
 def sync_garmin_activities(connection: sqlite3.Connection, app_config: dict[str, Any]) -> dict[str, Any]:
     checkpoint = get_sync_status(connection)
     now_iso = utc_now()
-    attempted_status = {
-        "provider": "garmin",
-        "last_attempted_sync_at": now_iso,
-        "last_successful_sync_at": checkpoint["last_successful_sync_at"],
-        "last_status": checkpoint["last_status"],
-        "last_error": checkpoint["last_error"],
-        "changed_pending_imports": [],
-    }
     update_checkpoint(connection, provider="garmin", attempted_at=now_iso)
     connection.commit()
 
@@ -78,7 +70,7 @@ def sync_garmin_activities(connection: sqlite3.Connection, app_config: dict[str,
         for activity in activities:
             normalized = normalize_garmin_activity(activity)
             changed = upsert_external_activity(connection, normalized)
-            changed_rows.append(reconcile_external_activity(connection, changed["id"]))
+            changed_rows.append(reconcile_external_activity(connection, changed["id"], commit=False))
         update_checkpoint(
             connection,
             provider="garmin",
@@ -93,12 +85,16 @@ def sync_garmin_activities(connection: sqlite3.Connection, app_config: dict[str,
             "changed_pending_imports": [row for row in changed_rows if row],
         }
     except GarminAuthError as exc:
+        connection.rollback()
         return _handle_sync_failure(connection, now_iso, "authentication_failure", str(exc))
     except GarminNetworkError as exc:
+        connection.rollback()
         return _handle_sync_failure(connection, now_iso, "network_failure", str(exc))
     except GarminParseError as exc:
+        connection.rollback()
         return _handle_sync_failure(connection, now_iso, "upstream_schema_failure", str(exc))
     except sqlite3.DatabaseError as exc:
+        connection.rollback()
         return _handle_sync_failure(connection, now_iso, "local_database_failure", str(exc))
 
 
