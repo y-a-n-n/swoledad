@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Workout Companion{% endblock %}</title>
+    <style>
+      :root {
+        --bg: #f5efe4;
+        --panel: #fffaf1;
+        --ink: #1f1c18;
+        --accent: #b85c38;
+        --accent-soft: #f1d7be;
+        --line: #d4c4af;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top right, rgba(184, 92, 56, 0.18), transparent 30%),
+          linear-gradient(180deg, #f7f1e7, var(--bg));
+      }
+      main {
+        width: min(960px, calc(100vw - 1.5rem));
+        margin: 0 auto;
+        padding: 1rem 0 3rem;
+      }
+      .page-header {
+        padding: 1rem 0;
+      }
+      .page-header h1 {
+        margin: 0;
+        font-size: clamp(2rem, 6vw, 3.5rem);
+      }
+      .grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+      .card {
+        background: color-mix(in srgb, var(--panel) 92%, white);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 1rem;
+        box-shadow: 0 12px 30px rgba(58, 41, 28, 0.08);
+      }
+      label {
+        display: grid;
+        gap: 0.35rem;
+        font-size: 0.95rem;
+      }
+      input, button {
+        font: inherit;
+      }
+      input {
+        width: 100%;
+        padding: 0.7rem 0.8rem;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: #fff;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th, td {
+        text-align: left;
+        padding: 0.45rem 0;
+        border-bottom: 1px solid var(--line);
+      }
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 0.8rem 1rem;
+        background: var(--accent);
+        color: white;
+        cursor: pointer;
+      }
+      .status {
+        padding: 0.5rem 0.75rem;
+        border-radius: 12px;
+        background: var(--accent-soft);
+      }
+      @media (max-width: 640px) {
+        main {
+          width: min(100vw - 1rem, 960px);
+        }
+      }
+    </style>
+    {% block head %}{% endblock %}
+  </head>
+  <body>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

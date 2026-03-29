@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Admin | Workout Companion{% endblock %}
+{% block content %}
+  <section class="page-header">
+    <p>Personal Workout Companion</p>
+    <h1>Admin Configuration</h1>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Inventory</h2>
+      <form id="inventory-form">
+        <label>
+          Barbell weight (kg)
+          <input name="barbell_weight_kg" type="number" min="0.1" step="0.1" value="{{ config.barbell_weight_kg }}">
+        </label>
+        <table>
+          <thead>
+            <tr><th>Plate</th><th>Count</th></tr>
+          </thead>
+          <tbody>
+            {% for row in config.plate_inventory %}
+              <tr>
+                <td><input type="number" step="0.01" min="0.01" name="weight_kg" value="{{ row.weight_kg }}"></td>
+                <td><input type="number" step="1" min="0" name="plate_count" value="{{ row.plate_count }}"></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <button type="submit">Save inventory</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Big 3 Increments</h2>
+      <form id="big3-form">
+        {% for key, label in [
+          ("squat_increment_kg", "Squat"),
+          ("bench_increment_kg", "Bench Press"),
+          ("deadlift_increment_kg", "Deadlift")
+        ] %}
+          <label>
+            {{ label }} increment (kg)
+            <input type="number" step="0.1" min="0.1" name="{{ key }}" value="{{ config.big3_increment_config[key] }}">
+          </label>
+        {% endfor %}
+        <button type="submit">Save increments</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>External Connection Status</h2>
+      <div class="status">
+        <div>Provider: {{ config.external_connection_status.provider }}</div>
+        <div>Configured: {{ "yes" if config.external_connection_status.configured else "no" }}</div>
+        <div>Last status: {{ config.external_connection_status.last_status or "not connected yet" }}</div>
+      </div>
+    </section>
+  </div>
+
+  <script src="{{ url_for('static', filename='admin.js') }}"></script>
+{% endblock %}
