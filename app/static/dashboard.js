@@ -1,7 +1,9 @@
 const DB_NAME = "workout-companion";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const ACTIVE_DRAFT_STORE = "active_workout_drafts";
-const PENDING_DRAFT_STORE = "pending_draft_creation";
+const OPERATION_QUEUE_STORE = "client_operation_queue";
+const TIMER_STATE_STORE = "timer_state";
+const CACHED_CONFIG_STORE = "cached_config";
 
 function openWorkoutDb() {
   return new Promise((resolve, reject) => {
@@ -11,8 +13,14 @@ function openWorkoutDb() {
       if (!db.objectStoreNames.contains(ACTIVE_DRAFT_STORE)) {
         db.createObjectStore(ACTIVE_DRAFT_STORE, { keyPath: "workout_id" });
       }
-      if (!db.objectStoreNames.contains(PENDING_DRAFT_STORE)) {
-        db.createObjectStore(PENDING_DRAFT_STORE, { keyPath: "operation_id" });
+      if (!db.objectStoreNames.contains(OPERATION_QUEUE_STORE)) {
+        db.createObjectStore(OPERATION_QUEUE_STORE, { keyPath: "operation_id" });
+      }
+      if (!db.objectStoreNames.contains(TIMER_STATE_STORE)) {
+        db.createObjectStore(TIMER_STATE_STORE, { keyPath: "workout_id" });
+      }
+      if (!db.objectStoreNames.contains(CACHED_CONFIG_STORE)) {
+        db.createObjectStore(CACHED_CONFIG_STORE, { keyPath: "key" });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -29,9 +37,9 @@ function txRequest(request) {
 
 async function saveLocalDraft(draft, operation) {
   const db = await openWorkoutDb();
-  const transaction = db.transaction([ACTIVE_DRAFT_STORE, PENDING_DRAFT_STORE], "readwrite");
+  const transaction = db.transaction([ACTIVE_DRAFT_STORE, OPERATION_QUEUE_STORE], "readwrite");
   transaction.objectStore(ACTIVE_DRAFT_STORE).put(draft);
-  transaction.objectStore(PENDING_DRAFT_STORE).put(operation);
+  transaction.objectStore(OPERATION_QUEUE_STORE).put(operation);
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
@@ -46,34 +54,113 @@ async function listLocalDrafts() {
 
 async function listPendingDraftOperations() {
   const db = await openWorkoutDb();
-  const transaction = db.transaction(PENDING_DRAFT_STORE, "readonly");
-  return txRequest(transaction.objectStore(PENDING_DRAFT_STORE).getAll());
+  const transaction = db.transaction(OPERATION_QUEUE_STORE, "readonly");
+  return txRequest(transaction.objectStore(OPERATION_QUEUE_STORE).getAll());
 }
 
-async function removePendingDraft(operationId) {
+async function removeQueuedOperation(operationId) {
   const db = await openWorkoutDb();
-  const transaction = db.transaction(PENDING_DRAFT_STORE, "readwrite");
-  transaction.objectStore(PENDING_DRAFT_STORE).delete(operationId);
+  const transaction = db.transaction(OPERATION_QUEUE_STORE, "readwrite");
+  transaction.objectStore(OPERATION_QUEUE_STORE).delete(operationId);
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
   });
 }
 
-async function attemptDraftCreation(operation) {
+async function upsertDraftOnly(draft) {
+  const db = await openWorkoutDb();
+  const transaction = db.transaction(ACTIVE_DRAFT_STORE, "readwrite");
+  transaction.objectStore(ACTIVE_DRAFT_STORE).put(draft);
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+async function loadDraft(workoutId) {
+  const db = await openWorkoutDb();
+  const transaction = db.transaction(ACTIVE_DRAFT_STORE, "readonly");
+  return txRequest(transaction.objectStore(ACTIVE_DRAFT_STORE).get(workoutId));
+}
+
+async function queueOperation(operation) {
+  const db = await openWorkoutDb();
+  const transaction = db.transaction(OPERATION_QUEUE_STORE, "readwrite");
+  transaction.objectStore(OPERATION_QUEUE_STORE).put(operation);
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+async function cacheConfig(config) {
+  const db = await openWorkoutDb();
+  const transaction = db.transaction(CACHED_CONFIG_STORE, "readwrite");
+  transaction.objectStore(CACHED_CONFIG_STORE).put({ key: "config", value: config });
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+async function loadCachedConfig() {
+  const db = await openWorkoutDb();
+  const transaction = db.transaction(CACHED_CONFIG_STORE, "readonly");
+  const record = await txRequest(transaction.objectStore(CACHED_CONFIG_STORE).get("config"));
+  return record?.value || null;
+}
+
+async function saveTimerState(workoutId, state) {
+  const db = await openWorkoutDb();
+  const transaction = db.transaction(TIMER_STATE_STORE, "readwrite");
+  transaction.objectStore(TIMER_STATE_STORE).put({ workout_id: workoutId, ...state });
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+async function loadTimerState(workoutId) {
+  const db = await openWorkoutDb();
+  const transaction = db.transaction(TIMER_STATE_STORE, "readonly");
+  return txRequest(transaction.objectStore(TIMER_STATE_STORE).get(workoutId));
+}
+
+async function removeDraft(workoutId) {
+  const db = await openWorkoutDb();
+  const transaction = db.transaction(ACTIVE_DRAFT_STORE, "readwrite");
+  transaction.objectStore(ACTIVE_DRAFT_STORE).delete(workoutId);
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+async function flushQueuedOperations() {
   if (!navigator.onLine) {
     return false;
   }
-  const response = await fetch("/api/workouts/draft", {
+  const operations = await listPendingDraftOperations();
+  if (operations.length === 0) {
+    return true;
+  }
+  operations.sort((left, right) => left.client_timestamp.localeCompare(right.client_timestamp));
+  const response = await fetch("/api/client-operations", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(operation),
+    body: JSON.stringify({ operations }),
   });
   if (!response.ok) {
     return false;
   }
-  await removePendingDraft(operation.operation_id);
-  return true;
+  const payload = await response.json();
+  for (const ack of payload.acks) {
+    if (ack.status === "applied" || ack.status === "rejected") {
+      await removeQueuedOperation(ack.operation_id);
+    }
+  }
+  return payload.acks.every((ack) => ack.status === "applied");
 }
 
 function renderResumeCard(draft) {
@@ -94,12 +181,20 @@ async function hydrateDashboard() {
     renderResumeCard(drafts[0]);
   }
   const pending = await listPendingDraftOperations();
-  for (const operation of pending) {
+  if (pending.length > 0) {
     try {
-      await attemptDraftCreation(operation);
+      await flushQueuedOperations();
     } catch (_error) {
-      // Keep the pending operation for later replay.
+      // Keep the pending operations for later replay.
     }
+  }
+  try {
+    const response = await fetch("/api/config");
+    if (response.ok) {
+      await cacheConfig(await response.json());
+    }
+  } catch (_error) {
+    // Use stale cached config when offline.
   }
 }
 
@@ -115,18 +210,22 @@ async function startWorkout(event) {
   event.preventDefault();
   const type = document.getElementById("type-selector").value;
   const workoutId = newUuid();
+  const timestamp = nowIso();
   const operation = {
     operation_id: newUuid(),
     workout_id: workoutId,
-    type,
-    started_at: nowIso(),
-    client_timestamp: nowIso(),
+    operation_type: "create_draft",
+    client_timestamp: timestamp,
+    payload: {
+      type,
+      started_at: timestamp,
+    },
   };
   const draft = {
     workout_id: workoutId,
     workout_type: type,
     status: "draft",
-    started_at: operation.started_at,
+    started_at: timestamp,
     exercise_rows: [],
     set_rows: [],
     pending_operation_ids: [operation.operation_id],
@@ -135,7 +234,7 @@ async function startWorkout(event) {
   };
   await saveLocalDraft(draft, operation);
   try {
-    await attemptDraftCreation(operation);
+    await flushQueuedOperations();
   } catch (_error) {
     // Navigation should still proceed from local state.
   }
@@ -148,8 +247,18 @@ window.addEventListener("online", () => {
 });
 
 window.workoutDraftStorage = {
+  cacheConfig,
+  flushQueuedOperations,
+  listPendingOperations: listPendingDraftOperations,
   listLocalDrafts,
+  loadCachedConfig,
+  loadDraft,
+  loadTimerState,
   openWorkoutDb,
+  queueOperation,
+  removeDraft,
+  saveTimerState,
+  upsertDraftOnly,
 };
 
 void hydrateDashboard();

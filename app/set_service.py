@@ -31,7 +31,9 @@ def upsert_set(
     _load_mutable_workout(connection, workout_id)
     prior = _prior_operation(connection, operation_id)
     if prior:
-        return MutationResult(HTTPStatus.OK, {"set": get_set_payload(connection, set_id)})
+        if prior["status"] == "applied":
+            return MutationResult(HTTPStatus.OK, {"set": get_set_payload(connection, set_id)})
+        raise ValueError(prior["error_message"] or "operation previously rejected")
 
     operation_type = payload.get("operation_type")
     if operation_type != "upsert_set":
@@ -104,7 +106,9 @@ def delete_set(
     _load_mutable_workout(connection, workout_id)
     prior = _prior_operation(connection, operation_id)
     if prior:
-        return MutationResult(HTTPStatus.OK, {"deleted": True, "set_id": set_id})
+        if prior["status"] == "applied":
+            return MutationResult(HTTPStatus.OK, {"deleted": True, "set_id": set_id})
+        raise ValueError(prior["error_message"] or "operation previously rejected")
     if payload.get("operation_type") != "delete_set":
         raise ValueError("operation_type must be delete_set")
     execute_write(
@@ -229,6 +233,6 @@ def _record_operation(
 
 def _prior_operation(connection: sqlite3.Connection, operation_id: str) -> sqlite3.Row | None:
     return connection.execute(
-        "SELECT operation_id FROM client_operation_log WHERE operation_id = ? AND status = 'applied'",
+        "SELECT status, error_message FROM client_operation_log WHERE operation_id = ?",
         (operation_id,),
     ).fetchone()

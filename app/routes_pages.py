@@ -28,3 +28,13 @@ def workout_page(workout_id: str):
     except LookupError:
         server_workout = None
     return render_template("workout.html", workout_id=workout_id, server_workout=server_workout)
+
+
+@pages_bp.get("/workouts/<workout_id>/summary")
+def workout_summary_page(workout_id: str):
+    server_workout = None
+    try:
+        server_workout = get_workout_payload(get_db(), workout_id)
+    except LookupError:
+        server_workout = None
+    return render_template("summary.html", workout_id=workout_id, server_workout=server_workout)

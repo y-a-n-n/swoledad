@@ -142,3 +142,11 @@ Expected ack shape:
 - The queue and server idempotency model are proven by tests.
 - Finalized-history side effects are in place for later suggestion and analytics slices.
 - This slice can be demonstrated manually without any Garmin functionality.
+
+## Dev Diary
+
+- Switched the browser write model from direct resource mutations to a persistent `client_operation_queue` that stores canonical operation envelopes. The direct endpoints still exist, but the UI now queues first and flushes through `POST /api/client-operations`.
+- Added stable rejection logging in `client_operation_log`, not just success logging. That matters for the replay contract because duplicate failed operations must return the same rejection instead of trying again with different semantics.
+- Finalization now owns the first real exactly-once side effect in the app: `exercise_dictionary` maintenance. The tests specifically guard against duplicate finalize replay inflating usage counts.
+- Moved timer persistence out of ad hoc page state and into IndexedDB-backed timestamp records so reload behavior stays aligned with the plan’s anti-drift requirement.
+- The local draft now carries the transient `finalized-pending-sync` status, but the server never sees that value as a canonical workout status. Keeping that boundary explicit was important to avoid leaking client-only state into the database model.

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Finalize Workout | Workout Companion{% endblock %}
+{% block content %}
+  <section class="page-header">
+    <p>Post-workout summary</p>
+    <h1>Finalize Workout</h1>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <form id="finalize-form">
+        <label>
+          Feeling score
+          <input type="number" id="feeling-score" min="1" max="5" step="1" required>
+        </label>
+        <label>
+          Notes
+          <input type="text" id="workout-notes">
+        </label>
+        <div class="status">External metrics will appear here when import reconciliation is implemented.</div>
+        <button type="submit">Finalize workout</button>
+      </form>
+      <p id="finalize-status">Draft not finalized yet.</p>
+    </section>
+  </div>
+
+  <script>
+    window.__summaryPage = {
+      workoutId: {{ workout_id | tojson }},
+      serverWorkout: {{ server_workout | tojson }}
+    };
+  </script>
+  <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='summary.js') }}"></script>
+{% endblock %}

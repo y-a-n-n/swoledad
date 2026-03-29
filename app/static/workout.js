@@ -52,19 +52,59 @@ function setListItemHtml(item) {
 }
 
 async function refreshWorkout() {
-  const workoutId = currentWorkoutId();
-  const response = await fetch(`/api/workouts/${workoutId}`);
-  if (!response.ok) {
+  const draft = await window.workoutDraftStorage.loadDraft(currentWorkoutId());
+  if (draft) {
+    const list = document.getElementById("set-list");
+    if (list) {
+      list.innerHTML = draft.set_rows.length
+        ? draft.set_rows
+            .slice()
+            .sort((left, right) => left.sequence_index - right.sequence_index)
+            .map(setListItemHtml)
+            .join("")
+        : "<p>No sets logged yet.</p>";
+    }
+    const shell = document.getElementById("workout-shell");
+    if (shell) {
+      shell.innerHTML = `
+        <p>Workout ID: ${draft.workout_id}</p>
+        <p>Status: ${draft.status}</p>
+        <p>Started: ${draft.started_at}</p>
+        <p>Pending operations: ${draft.pending_operation_ids.length}</p>
+      `;
+    }
     return;
   }
-  const workout = await response.json();
-  window.__workoutPage.serverWorkout = workout;
-  const list = document.getElementById("set-list");
-  if (list) {
-    list.innerHTML = workout.sets.length
-      ? workout.sets.map(setListItemHtml).join("")
-      : "<p>No sets logged yet.</p>";
+  const workoutId = currentWorkoutId();
+  const response = await fetch(`/api/workouts/${workoutId}`);
+  if (response.ok) {
+    const workout = await response.json();
+    window.__workoutPage.serverWorkout = workout;
+    const list = document.getElementById("set-list");
+    if (list) {
+      list.innerHTML = workout.sets.length
+        ? workout.sets.map(setListItemHtml).join("")
+        : "<p>No sets logged yet.</p>";
+    }
   }
+}
+
+async function mutateLocalDraft(mutator) {
+  const draft = (await window.workoutDraftStorage.loadDraft(currentWorkoutId())) || {
+    workout_id: currentWorkoutId(),
+    workout_type: window.__workoutPage.serverWorkout?.type || "strength",
+    status: "draft",
+    started_at: window.__workoutPage.serverWorkout?.started_at || new Date().toISOString(),
+    exercise_rows: [],
+    set_rows: [],
+    pending_operation_ids: [],
+    timer_state: null,
+    last_local_write_at: new Date().toISOString(),
+  };
+  const nextDraft = mutator(structuredClone(draft));
+  await window.workoutDraftStorage.upsertDraftOnly(nextDraft);
+  await refreshWorkout();
+  return nextDraft;
 }
 
 async function upsertSet(event) {
@@ -72,26 +112,35 @@ async function upsertSet(event) {
   const workoutId = currentWorkoutId();
   const setId = document.getElementById("set-id").value || crypto.randomUUID();
   document.getElementById("set-id").value = setId;
-  const payload = {
+  const operation = {
     operation_id: crypto.randomUUID(),
+    workout_id: workoutId,
     operation_type: "upsert_set",
     client_timestamp: new Date().toISOString(),
-    exercise_name: document.getElementById("exercise-name").value,
-    sequence_index: Number(document.getElementById("sequence-index").value),
-    weight_kg: document.getElementById("weight-kg").value ? Number(document.getElementById("weight-kg").value) : null,
-    reps: document.getElementById("reps").value ? Number(document.getElementById("reps").value) : null,
-    duration_seconds: document.getElementById("duration-seconds").value ? Number(document.getElementById("duration-seconds").value) : null,
-    set_type: document.getElementById("set-type").value,
+    payload: {
+      set_id: setId,
+      exercise_name: document.getElementById("exercise-name").value,
+      sequence_index: Number(document.getElementById("sequence-index").value),
+      weight_kg: document.getElementById("weight-kg").value ? Number(document.getElementById("weight-kg").value) : null,
+      reps: document.getElementById("reps").value ? Number(document.getElementById("reps").value) : null,
+      duration_seconds: document.getElementById("duration-seconds").value ? Number(document.getElementById("duration-seconds").value) : null,
+      set_type: document.getElementById("set-type").value,
+    },
   };
-  const response = await fetch(`/api/workouts/${workoutId}/sets/${setId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+  await mutateLocalDraft((draft) => {
+    draft.last_local_write_at = operation.client_timestamp;
+    draft.pending_operation_ids = [...draft.pending_operation_ids, operation.operation_id];
+    const existingIndex = draft.set_rows.findIndex((item) => item.id === setId);
+    const nextSet = { id: setId, ...operation.payload };
+    if (existingIndex >= 0) {
+      draft.set_rows[existingIndex] = nextSet;
+    } else {
+      draft.set_rows.push(nextSet);
+    }
+    return draft;
   });
-  if (!response.ok) {
-    return;
-  }
-  await refreshWorkout();
+  await window.workoutDraftStorage.queueOperation(operation);
+  await window.workoutDraftStorage.flushQueuedOperations();
 }
 
 async function deleteSelectedSet() {
@@ -100,21 +149,23 @@ async function deleteSelectedSet() {
   if (!setId) {
     return;
   }
-  const response = await fetch(`/api/workouts/${workoutId}/sets/${setId}`, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operation_id: crypto.randomUUID(),
-      operation_type: "delete_set",
-      client_timestamp: new Date().toISOString(),
-    }),
+  const operation = {
+    operation_id: crypto.randomUUID(),
+    workout_id: workoutId,
+    operation_type: "delete_set",
+    client_timestamp: new Date().toISOString(),
+    payload: { set_id: setId },
+  };
+  await mutateLocalDraft((draft) => {
+    draft.last_local_write_at = operation.client_timestamp;
+    draft.pending_operation_ids = [...draft.pending_operation_ids, operation.operation_id];
+    draft.set_rows = draft.set_rows.filter((item) => item.id !== setId);
+    return draft;
   });
-  if (!response.ok) {
-    return;
-  }
+  await window.workoutDraftStorage.queueOperation(operation);
+  await window.workoutDraftStorage.flushQueuedOperations();
   document.getElementById("set-form").reset();
   document.getElementById("set-id").value = "";
-  await refreshWorkout();
 }
 
 async function loadSuggestions() {
@@ -149,32 +200,31 @@ async function updatePlateLoading() {
     container.textContent = "Enter a weight to see plate loading.";
     return;
   }
-  const response = await fetch(`/api/plate-loading?target_weight=${encodeURIComponent(weight)}`);
-  if (!response.ok) {
-    container.textContent = "Unable to compute plate loading.";
-    return;
+  try {
+    const response = await fetch(`/api/plate-loading?target_weight=${encodeURIComponent(weight)}`);
+    if (response.ok) {
+      const payload = await response.json();
+      const exact = payload.exact_match;
+      if (exact) {
+        container.textContent = `Exact: ${exact.achieved_weight} kg using ${exact.per_side.join(", ") || "no plates"} per side.`;
+        return;
+      }
+      container.textContent = `Nearest lower: ${payload.nearest_lower?.achieved_weight ?? "n/a"} kg. Nearest higher: ${payload.nearest_higher?.achieved_weight ?? "n/a"} kg.`;
+      return;
+    }
+  } catch (_error) {
+    const config = await window.workoutDraftStorage.loadCachedConfig();
+    if (config) {
+      container.textContent = `Offline mode: cached barbell ${config.barbell_weight_kg} kg.`;
+      return;
+    }
   }
-  const payload = await response.json();
-  const exact = payload.exact_match;
-  if (exact) {
-    container.textContent = `Exact: ${exact.achieved_weight} kg using ${exact.per_side.join(", ") || "no plates"} per side.`;
-    return;
-  }
-  container.textContent = `Nearest lower: ${payload.nearest_lower?.achieved_weight ?? "n/a"} kg. Nearest higher: ${payload.nearest_higher?.achieved_weight ?? "n/a"} kg.`;
+  container.textContent = "Unable to compute plate loading.";
 }
 
-function loadTimerState() {
-  const raw = localStorage.getItem(`${TIMER_KEY_PREFIX}${currentWorkoutId()}`);
-  return raw ? JSON.parse(raw) : null;
-}
-
-function saveTimerState(state) {
-  localStorage.setItem(`${TIMER_KEY_PREFIX}${currentWorkoutId()}`, JSON.stringify(state));
-}
-
-function renderTimer() {
+async function renderTimer() {
   const display = document.getElementById("timer-display");
-  const state = loadTimerState();
+  const state = await window.workoutDraftStorage.loadTimerState(currentWorkoutId());
   if (!state || state.mode !== "running") {
     display.textContent = "Timer idle.";
     return;
@@ -184,24 +234,24 @@ function renderTimer() {
   display.textContent = `Rest timer: ${remaining}s remaining`;
 }
 
-function startTimer() {
-  saveTimerState({
+async function startTimer() {
+  await window.workoutDraftStorage.saveTimerState(currentWorkoutId(), {
     mode: "running",
     started_at: new Date().toISOString(),
     stopped_at: null,
     target_duration_seconds: Number(document.getElementById("timer-target").value),
   });
-  renderTimer();
+  await renderTimer();
 }
 
-function stopTimer() {
-  saveTimerState({
+async function stopTimer() {
+  await window.workoutDraftStorage.saveTimerState(currentWorkoutId(), {
     mode: "stopped",
     started_at: null,
     stopped_at: new Date().toISOString(),
     target_duration_seconds: Number(document.getElementById("timer-target").value),
   });
-  renderTimer();
+  await renderTimer();
 }
 
 document.getElementById("set-form")?.addEventListener("submit", upsertSet);
@@ -235,5 +285,11 @@ document.getElementById("set-list")?.addEventListener("click", (event) => {
   document.getElementById("duration-seconds").value = selected.duration_seconds ?? "";
 });
 
+window.addEventListener("online", () => {
+  void window.workoutDraftStorage.flushQueuedOperations();
+});
+
 void loadWorkoutShell().then(refreshWorkout).then(renderTimer);
-window.setInterval(renderTimer, 1000);
+window.setInterval(() => {
+  void renderTimer();
+}, 1000);

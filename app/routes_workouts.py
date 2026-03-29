@@ -7,7 +7,9 @@ from flask import Blueprint, jsonify, request
 from .config_service import get_config
 from .dashboard_service import get_dashboard_payload
 from .db import get_db
+from .finalize_service import finalize_workout
 from .plate_loading import calculate_plate_loading
+from .queue_service import process_operation_batch
 from .set_service import delete_set, upsert_set
 from .suggestions import get_big3_prefill, get_exercise_suggestions
 from .workout_service import create_draft, get_workout_payload
@@ -39,6 +41,33 @@ def get_workout(workout_id: str):
     except LookupError:
         return jsonify({"error": "workout not found"}), HTTPStatus.NOT_FOUND
     return jsonify(payload)
+
+
+@workouts_bp.post("/api/workouts/<workout_id>/finalize")
+def post_finalize(workout_id: str):
+    payload = request.get_json(silent=True) or {}
+    try:
+        result = finalize_workout(get_db(), workout_id, payload)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), HTTPStatus.BAD_REQUEST
+    except LookupError as exc:
+        return jsonify({"error": str(exc)}), HTTPStatus.NOT_FOUND
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), HTTPStatus.CONFLICT
+    return jsonify(result.payload), result.status_code
+
+
+@workouts_bp.post("/api/client-operations")
+def post_client_operations():
+    payload = request.get_json(silent=True) or {}
+    operations = payload.get("operations")
+    if not isinstance(operations, list):
+        return jsonify({"error": "operations must be a list"}), HTTPStatus.BAD_REQUEST
+    try:
+        acks = process_operation_batch(get_db(), operations)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), HTTPStatus.BAD_REQUEST
+    return jsonify({"acks": acks})
 
 
 @workouts_bp.put("/api/workouts/<workout_id>/sets/<set_id>")
