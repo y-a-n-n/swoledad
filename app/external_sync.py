@@ -8,7 +8,13 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .db import execute_write
-from .garmin_adapter import GarminAuthError, GarminNetworkError, GarminParseError, build_garmin_adapter
+from .garmin_adapter import (
+    GarminAuthError,
+    GarminNetworkError,
+    GarminParseError,
+    GarminSetupRequiredError,
+    build_garmin_adapter,
+)
 from .reconciliation_service import reconcile_external_activity
 from .time_utils import utc_now
 
@@ -87,6 +93,9 @@ def sync_garmin_activities(connection: sqlite3.Connection, app_config: dict[str,
     except GarminAuthError as exc:
         connection.rollback()
         return _handle_sync_failure(connection, now_iso, "authentication_failure", str(exc))
+    except GarminSetupRequiredError as exc:
+        connection.rollback()
+        return _handle_sync_failure(connection, now_iso, "setup_required", str(exc))
     except GarminNetworkError as exc:
         connection.rollback()
         return _handle_sync_failure(connection, now_iso, "network_failure", str(exc))

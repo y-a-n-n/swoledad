@@ -219,7 +219,7 @@ function renderResumeCard(draft) {
     return;
   }
   card.innerHTML = `
-    <p>Local draft: ${draft.workout_type} started ${draft.started_at}</p>
+    <p>Local draft: ${draft.workout_type.replaceAll("_", " ")} started ${draft.started_at}</p>
     <a href="/workouts/${draft.workout_id}">Resume current draft</a>
   `;
 }
@@ -256,7 +256,7 @@ async function triggerExternalSync() {
   const payload = await response.json();
   const syncStatus = document.getElementById("sync-status-placeholder");
   if (syncStatus) {
-    syncStatus.textContent = `Garmin status: ${payload.last_status || "idle"}${payload.last_error ? ` (${payload.last_error})` : ""}`;
+    syncStatus.textContent = payload.status_label || payload.last_status || "Garmin idle";
   }
   const imports = document.getElementById("pending-imports-placeholder");
   if (imports && payload.changed_pending_imports.length > 0) {

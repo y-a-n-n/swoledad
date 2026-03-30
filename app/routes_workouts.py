@@ -10,6 +10,7 @@ from .db import get_db
 from .external_sync import list_pending_imports, maybe_sync_garmin_activities
 from .finalize_service import finalize_workout
 from .analytics_service import get_analytics_payload
+from .garmin_adapter import get_garmin_connection_status
 from .plate_loading import calculate_plate_loading
 from .queue_service import process_operation_batch
 from .reconciliation_service import (
@@ -26,7 +27,7 @@ workouts_bp = Blueprint("workouts", __name__)
 
 @workouts_bp.get("/api/dashboard")
 def get_dashboard():
-    return jsonify(get_dashboard_payload(get_db()))
+    return jsonify(get_dashboard_payload(get_db(), dict(current_app.config)))
 
 
 @workouts_bp.post("/api/workouts/draft")
@@ -80,7 +81,12 @@ def post_client_operations():
 @workouts_bp.post("/api/external/sync")
 def post_external_sync():
     payload = maybe_sync_garmin_activities(get_db(), dict(current_app.config))
-    return jsonify(payload)
+    return jsonify(
+        {
+            **payload,
+            **get_garmin_connection_status(dict(current_app.config), payload),
+        }
+    )
 
 
 @workouts_bp.get("/api/external/pending-imports")

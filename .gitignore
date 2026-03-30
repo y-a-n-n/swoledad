@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 instance/
 *.egg-info/
+.playwright-shots 

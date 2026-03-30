@@ -48,11 +48,25 @@ The app will initialize its SQLite database on first boot.
 
 The Garmin adapter is wrapped behind `app/garmin_adapter.py`.
 
-Config keys expected by the default adapter:
+The app expects a local OAuth token store, not a saved Garmin password.
 
-- `GARMIN_TOKEN_PATH`
-- `GARMIN_USERNAME_ENV`
-- `GARMIN_PASSWORD_ENV`
+1. Install the package:
+
+```bash
+.venv/bin/pip install -e '.[dev]'
+```
+
+2. Bootstrap tokens on the same laptop that runs Flask:
+
+```bash
+.venv/bin/python scripts/bootstrap_garmin_tokens.py --token-path ~/.garminconnect
+```
+
+3. Start Flask with the token path:
+
+```bash
+GARMIN_TOKEN_PATH=~/.garminconnect FLASK_APP=app:create_app .venv/bin/flask run --debug --host 0.0.0.0 --port 5000
+```
 
 For tests and local development, the sync layer also supports injecting `GARMIN_ADAPTER_FACTORY` via app config.
 

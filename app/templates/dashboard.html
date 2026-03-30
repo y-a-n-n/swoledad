@@ -2,50 +2,80 @@
 {% block title %}Dashboard | Workout Companion{% endblock %}
 {% block content %}
   <section class="page-header">
-    <p>Personal Workout Companion</p>
+    <p class="eyebrow">Daily Control Center</p>
     <h1>Dashboard</h1>
   </section>
 
-  <div class="grid">
-    <section class="card">
-      <h2>Start Workout</h2>
-      <form id="start-workout-form">
+  <section class="hero-grid">
+    <section class="card hero-card">
+      <p class="eyebrow" style="color: rgba(255,255,255,0.72);">Ready To Train</p>
+      <h2>Start the next session without waiting on sync.</h2>
+      <form id="start-workout-form" class="stack" style="margin-top: 1.2rem;">
         <label>
           Workout type
           <select name="type" id="type-selector">
-            {% for option in ["strength", "cross_training", "imported_cardio"] %}
+            {% for option in ["strength", "cross_training"] %}
               <option value="{{ option }}" {% if option == dashboard.last_workout_type %}selected{% endif %}>{{ option }}</option>
             {% endfor %}
           </select>
         </label>
         <button type="submit">Start workout</button>
       </form>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <strong>{{ dashboard.weekly_stats.finalized_workouts }}</strong>
+          <span>Finalized this week</span>
+        </div>
+        <div class="hero-stat">
+          <strong>{{ dashboard.pending_imports|length }}</strong>
+          <span>Pending imports</span>
+        </div>
+      </div>
     </section>
 
-    <section class="card">
-      <h2>Resume Draft</h2>
+    <section class="card {% if not dashboard.active_draft %}empty-card{% endif %}">
+      <div class="section-header">
+        <div>
+          <h2>Resume Draft</h2>
+        </div>
+      </div>
       <div id="resume-card">
         {% if dashboard.active_draft %}
-          <p>Server draft: {{ dashboard.active_draft.type }} started {{ dashboard.active_draft.started_at }}</p>
+          <div class="number-band">
+            <span class="muted">Server draft</span>
+            <strong>{{ dashboard.active_draft.type|replace('_', ' ')|title }}</strong>
+            <span>{{ dashboard.active_draft.started_at }}</span>
+          </div>
           <a href="/workouts/{{ dashboard.active_draft.workout_id }}">Resume current draft</a>
         {% else %}
           <p>No draft on the server yet.</p>
         {% endif %}
       </div>
     </section>
+  </section>
 
-    <section class="card">
-      <h2>Pending Imports</h2>
+  <div class="grid two-up">
+    <section class="card {% if not dashboard.pending_imports %}empty-card{% endif %}">
+      <div class="section-header">
+        <div>
+          <h2>Pending Imports</h2>
+        </div>
+      </div>
       <div id="pending-imports-placeholder">
         {% if dashboard.pending_imports %}
           {% for item in dashboard.pending_imports %}
-            <div class="status" data-external-id="{{ item.id }}">
-              <p>{{ item.activity_type }} at {{ item.started_at }}</p>
-              <div class="grid">
+            <div class="list-item" data-external-id="{{ item.id }}">
+              <strong>{{ item.activity_type|replace('_', ' ')|title }}</strong>
+              <p>{{ item.started_at }}</p>
+              <div class="pill-row">
+                <span class="pill">{{ item.distance_meters or 0 }} m</span>
+                <span class="pill">{{ item.duration_seconds or 0 }} sec</span>
+              </div>
+              <div class="grid compact">
                 <button type="button" class="accept-import" data-external-id="{{ item.id }}">Accept</button>
-                <button type="button" class="dismiss-import" data-external-id="{{ item.id }}">Dismiss</button>
+                <button type="button" class="dismiss-import soft-button" data-external-id="{{ item.id }}">Dismiss</button>
                 <input type="text" class="link-workout-id" placeholder="Workout UUID">
-                <button type="button" class="link-import" data-external-id="{{ item.id }}">Link</button>
+                <button type="button" class="link-import soft-button" data-external-id="{{ item.id }}">Link</button>
               </div>
             </div>
           {% endfor %}
@@ -56,17 +86,34 @@
     </section>
 
     <section class="card">
-      <h2>Weekly Summary</h2>
-      <p id="weekly-summary-placeholder">Weekly stats will appear here.</p>
-    </section>
-
-    <section class="card">
-      <h2>Sync Status</h2>
+      <div class="section-header">
+        <div>
+          <h2>Sync Status</h2>
+        </div>
+        <button type="button" id="sync-now">Sync now</button>
+      </div>
       <p id="sync-status-placeholder">
-        Garmin status: {{ dashboard.sync_status.last_status or "idle" }}
-        {% if dashboard.sync_status.last_error %}({{ dashboard.sync_status.last_error }}){% endif %}
+        {{ dashboard.sync_status.status_label }}
+        {% if dashboard.sync_status.last_error and dashboard.sync_status.state not in ["missing_client", "needs_token_bootstrap"] %}
+          ({{ dashboard.sync_status.last_error }})
+        {% endif %}
       </p>
-      <button type="button" id="sync-now">Sync now</button>
+      <p class="muted" style="margin-top: 0.5rem;">{{ dashboard.sync_status.detail }}</p>
+      <div class="stack" style="margin-top: 1rem;">
+        <div class="number-band">
+          <span class="muted">Weekly summary</span>
+          <strong id="weekly-summary-placeholder">{{ dashboard.weekly_stats.finalized_workouts }}</strong>
+          <span>Finalized workouts in the last 7 days</span>
+          <div class="progress">
+            <span style="width: {{ [dashboard.weekly_stats.finalized_workouts * 20, 100]|min }}%;"></span>
+          </div>
+        </div>
+        <div class="pill-row">
+          <span class="pill">Provider: {{ dashboard.sync_status.provider }}</span>
+          <span class="pill">State: {{ dashboard.sync_status.state|replace('_', ' ')|title }}</span>
+          <span class="pill">Pending: {{ dashboard.pending_imports|length }}</span>
+        </div>
+      </div>
     </section>
   </div>
 

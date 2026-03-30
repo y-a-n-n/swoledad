@@ -2,13 +2,13 @@
 {% block title %}Finalize Workout | Workout Companion{% endblock %}
 {% block content %}
   <section class="page-header">
-    <p>Post-workout summary</p>
+    <p class="eyebrow">Session Wrap-up</p>
     <h1>Finalize Workout</h1>
   </section>
 
-  <div class="grid">
+  <div class="hero-grid" style="grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr);">
     <section class="card">
-      <form id="finalize-form">
+      <form id="finalize-form" class="stack">
         <label>
           Feeling score
           <input type="number" id="feeling-score" min="1" max="5" step="1" required>
@@ -20,7 +20,14 @@
         <div class="status">External metrics will appear here when import reconciliation is implemented.</div>
         <button type="submit">Finalize workout</button>
       </form>
-      <p id="finalize-status">Draft not finalized yet.</p>
+    </section>
+
+    <section class="card">
+      <div class="number-band">
+        <span class="muted">Finalize state</span>
+        <strong id="finalize-status">Draft not finalized yet.</strong>
+        <span>Once finalized, the workout becomes part of history, suggestions, and analytics.</span>
+      </div>
     </section>
   </div>
 

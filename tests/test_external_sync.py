@@ -6,6 +6,7 @@ from app.external_sync import (
     normalize_garmin_activity,
     sync_garmin_activities,
 )
+from app.garmin_adapter import GarminSetupRequiredError
 
 
 class FakeGarminAdapter:
@@ -83,6 +84,20 @@ def test_failed_sync_updates_attempted_not_successful(app):
         checkpoint = get_sync_status(get_db())
     assert result["last_status"] == "network_failure"
     assert checkpoint["last_attempted_sync_at"] is not None
+    assert checkpoint["last_successful_sync_at"] is None
+
+
+def test_setup_required_sync_uses_setup_required_status(app):
+    with app.app_context():
+        from app.db import get_db
+
+        result = sync_garmin_activities(
+            get_db(),
+            _app_config(FakeGarminAdapter(error=GarminSetupRequiredError("missing token bootstrap"))),
+        )
+        checkpoint = get_sync_status(get_db())
+    assert result["last_status"] == "setup_required"
+    assert checkpoint["last_status"] == "setup_required"
     assert checkpoint["last_successful_sync_at"] is None
 
 

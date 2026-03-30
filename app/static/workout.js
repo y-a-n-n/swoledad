@@ -1,3 +1,11 @@
+function formatWorkoutType(value) {
+  return String(value || "")
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 async function loadWorkoutShell() {
   const shell = document.getElementById("workout-shell");
   if (!shell || !window.__workoutPage) {
@@ -13,23 +21,51 @@ async function loadWorkoutShell() {
   }
 
   if (localDraft) {
-    document.getElementById("workout-title").textContent = `${localDraft.workout_type} workout`;
+    document.getElementById("workout-title").textContent = `${formatWorkoutType(localDraft.workout_type)} Workout`;
     shell.innerHTML = `
-      <p>Workout ID: ${localDraft.workout_id}</p>
-      <p>Status: ${localDraft.status}</p>
-      <p>Started: ${localDraft.started_at}</p>
-      <p>Saved locally and ready for logging.</p>
+      <div class="workout-shell-grid">
+        <div class="shell-tile">
+          <strong>Type</strong>
+          <span>${formatWorkoutType(localDraft.workout_type)}</span>
+        </div>
+        <div class="shell-tile">
+          <strong>Status</strong>
+          <span>${formatWorkoutType(localDraft.status)}</span>
+        </div>
+        <div class="shell-tile">
+          <strong>Started</strong>
+          <span>${localDraft.started_at}</span>
+        </div>
+        <div class="shell-tile">
+          <strong>Writes pending</strong>
+          <span>${localDraft.pending_operation_ids.length}</span>
+        </div>
+      </div>
     `;
     return;
   }
 
   if (serverWorkout) {
-    document.getElementById("workout-title").textContent = `${serverWorkout.type} workout`;
+    document.getElementById("workout-title").textContent = `${formatWorkoutType(serverWorkout.type)} Workout`;
     shell.innerHTML = `
-      <p>Workout ID: ${serverWorkout.id}</p>
-      <p>Status: ${serverWorkout.status}</p>
-      <p>Started: ${serverWorkout.started_at}</p>
-      <p>Loaded from the server.</p>
+      <div class="workout-shell-grid">
+        <div class="shell-tile">
+          <strong>Type</strong>
+          <span>${formatWorkoutType(serverWorkout.type)}</span>
+        </div>
+        <div class="shell-tile">
+          <strong>Status</strong>
+          <span>${formatWorkoutType(serverWorkout.status)}</span>
+        </div>
+        <div class="shell-tile">
+          <strong>Started</strong>
+          <span>${serverWorkout.started_at}</span>
+        </div>
+        <div class="shell-tile">
+          <strong>Mode</strong>
+          <span>Server</span>
+        </div>
+      </div>
     `;
     return;
   }
@@ -54,6 +90,7 @@ function setListItemHtml(item) {
 async function refreshWorkout() {
   const draft = await window.workoutDraftStorage.loadDraft(currentWorkoutId());
   if (draft) {
+    document.getElementById("workout-title").textContent = `${formatWorkoutType(draft.workout_type)} Workout`;
     const list = document.getElementById("set-list");
     if (list) {
       list.innerHTML = draft.set_rows.length
@@ -62,15 +99,29 @@ async function refreshWorkout() {
             .sort((left, right) => left.sequence_index - right.sequence_index)
             .map(setListItemHtml)
             .join("")
-        : "<p>No sets logged yet.</p>";
+        : '<div class="list-item"><p>No sets logged yet.</p></div>';
     }
     const shell = document.getElementById("workout-shell");
     if (shell) {
       shell.innerHTML = `
-        <p>Workout ID: ${draft.workout_id}</p>
-        <p>Status: ${draft.status}</p>
-        <p>Started: ${draft.started_at}</p>
-        <p>Pending operations: ${draft.pending_operation_ids.length}</p>
+        <div class="workout-shell-grid">
+          <div class="shell-tile">
+            <strong>Type</strong>
+            <span>${formatWorkoutType(draft.workout_type)}</span>
+          </div>
+          <div class="shell-tile">
+            <strong>Status</strong>
+            <span>${formatWorkoutType(draft.status)}</span>
+          </div>
+          <div class="shell-tile">
+            <strong>Started</strong>
+            <span>${draft.started_at}</span>
+          </div>
+          <div class="shell-tile">
+            <strong>Writes pending</strong>
+            <span>${draft.pending_operation_ids.length}</span>
+          </div>
+        </div>
       `;
     }
     return;
@@ -80,11 +131,12 @@ async function refreshWorkout() {
   if (response.ok) {
     const workout = await response.json();
     window.__workoutPage.serverWorkout = workout;
+    document.getElementById("workout-title").textContent = `${formatWorkoutType(workout.type)} Workout`;
     const list = document.getElementById("set-list");
     if (list) {
       list.innerHTML = workout.sets.length
         ? workout.sets.map(setListItemHtml).join("")
-        : "<p>No sets logged yet.</p>";
+        : '<div class="list-item"><p>No sets logged yet.</p></div>';
     }
   }
 }

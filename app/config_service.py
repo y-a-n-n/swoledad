@@ -31,12 +31,16 @@ class InventoryRow:
     plate_count: int
 
 
-def get_config(connection: sqlite3.Connection) -> dict[str, Any]:
+def get_config(connection: sqlite3.Connection, app_config: dict[str, Any] | None = None) -> dict[str, Any]:
     config_rows = connection.execute("SELECT key, value_json FROM user_config").fetchall()
     values = {row["key"]: json.loads(row["value_json"]) for row in config_rows}
     inventory_rows = connection.execute(
         "SELECT weight_kg, plate_count FROM plate_inventory ORDER BY weight_kg DESC"
     ).fetchall()
+    from .external_sync import get_sync_status
+    from .garmin_adapter import get_garmin_connection_status
+
+    checkpoint = get_sync_status(connection)
     return {
         "barbell_weight_kg": float(values["barbell_weight_kg"]),
         "plate_inventory": [
@@ -44,8 +48,9 @@ def get_config(connection: sqlite3.Connection) -> dict[str, Any]:
             for row in inventory_rows
         ],
         "big3_increment_config": values["big3_increment_config"],
-        "external_connection_status": _external_connection_status(
-            values.get("external_connection_config", DEFAULT_EXTERNAL_CONNECTION_CONFIG)
+        "external_connection_status": get_garmin_connection_status(
+            app_config or {},
+            checkpoint,
         ),
     }
 
@@ -138,13 +143,3 @@ def _validate_big3_config(payload: Any) -> dict[str, float]:
             raise ValidationError(f"{key} must be greater than zero")
         normalized[key] = value
     return normalized
-
-
-def _external_connection_status(raw_config: Any) -> dict[str, Any]:
-    if not isinstance(raw_config, dict):
-        return DEFAULT_EXTERNAL_CONNECTION_CONFIG.copy()
-    return {
-        "provider": "garmin",
-        "configured": bool(raw_config.get("configured", False)),
-        "last_status": raw_config.get("last_status"),
-    }

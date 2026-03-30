@@ -41,12 +41,27 @@ def test_get_config_returns_expected_defaults(client):
     payload = response.get_json()
     assert payload["barbell_weight_kg"] == 20.0
     assert payload["big3_increment_config"]["deadlift_increment_kg"] == 5.0
-    assert payload["external_connection_status"] == {
-        "provider": "garmin",
-        "configured": False,
-        "last_status": None,
-    }
+    assert payload["external_connection_status"]["provider"] == "garmin"
+    assert payload["external_connection_status"]["configured"] is False
+    assert payload["external_connection_status"]["state"] in {"missing_client", "needs_token_bootstrap"}
+    assert payload["external_connection_status"]["last_status"] is None
     assert payload["plate_inventory"][0]["weight_kg"] == 25.0
+
+
+def test_get_config_marks_garmin_ready_when_token_store_exists(client, app, tmp_path):
+    token_dir = tmp_path / "garmin-tokens"
+    token_dir.mkdir()
+    (token_dir / "oauth1_token.json").write_text("{}", encoding="utf-8")
+    (token_dir / "oauth2_token.json").write_text("{}", encoding="utf-8")
+    app.config["GARMIN_TOKEN_PATH"] = str(token_dir)
+    app.config["GARMIN_PACKAGE_INSTALLED"] = True
+
+    response = client.get("/api/config")
+
+    payload = response.get_json()
+    assert payload["external_connection_status"]["configured"] is True
+    assert payload["external_connection_status"]["state"] == "ready"
+    assert payload["external_connection_status"]["token_path"] == str(token_dir)
 
 
 def test_put_inventory_persists_inventory_and_barbell_weight(client):

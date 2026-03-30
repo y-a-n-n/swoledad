@@ -2,29 +2,38 @@
 {% block title %}Workout | Workout Companion{% endblock %}
 {% block content %}
   <section class="page-header">
-    <p>Active workout</p>
+    <p class="eyebrow">Active Workout</p>
     <h1 id="workout-title">Workout Shell</h1>
   </section>
 
-  <div class="grid">
-    <section class="card">
-      <h2>Status</h2>
-      <div id="workout-shell">
-        <p>Loading workout state...</p>
-      </div>
-      <p><a id="finalize-link" href="/workouts/{{ workout_id }}/summary">Go to workout summary</a></p>
-    </section>
+  <div class="layout-columns">
+    <section class="section-stack">
+      <section class="card">
+        <div class="section-header">
+          <div>
+            <h2>Session status</h2>
+          </div>
+          <a id="finalize-link" href="/workouts/{{ workout_id }}/summary">Go to summary</a>
+        </div>
+        <div id="workout-shell">
+          <p>Loading workout state...</p>
+        </div>
+      </section>
 
-    <section class="card">
-      <h2>Log Set</h2>
-      <form id="set-form">
+      <section class="card">
+        <div class="section-header">
+          <div>
+            <h2>Log Set</h2>
+          </div>
+        </div>
+        <form id="set-form" class="section-stack">
         <input type="hidden" name="set_id" id="set-id">
         <label>
           Exercise
           <input type="text" name="exercise_name" id="exercise-name" list="exercise-suggestions" autocomplete="off">
           <datalist id="exercise-suggestions"></datalist>
         </label>
-        <div class="grid">
+        <div class="grid compact">
           <label>
             Sequence
             <input type="number" name="sequence_index" id="sequence-index" value="0" min="0" step="1">
@@ -50,43 +59,52 @@
             <input type="number" name="duration_seconds" id="duration-seconds" min="0" step="1">
           </label>
         </div>
-        <div class="grid">
+        <div class="button-row">
           <button type="submit">Save set</button>
-          <button type="button" id="delete-set">Delete selected set</button>
+          <button type="button" id="delete-set" class="soft-button">Delete selected set</button>
         </div>
       </form>
+      </section>
+
+      <section class="card">
+        <div class="section-header">
+          <div>
+            <h2>Sets</h2>
+          </div>
+        </div>
+        <div id="set-list" class="list-card"></div>
+      </section>
     </section>
 
-    <section class="card">
-      <h2>Big 3 Prefill</h2>
-      <div class="grid">
-        <button type="button" class="prefill-button" data-lift="squat">Squat</button>
-        <button type="button" class="prefill-button" data-lift="bench_press">Bench Press</button>
-        <button type="button" class="prefill-button" data-lift="deadlift">Deadlift</button>
-      </div>
-    </section>
+    <section class="section-stack">
+      <section class="card">
+        <h2>Big 3 Prefill</h2>
+        <div class="button-row">
+          <button type="button" class="prefill-button soft-button" data-lift="squat">Squat</button>
+          <button type="button" class="prefill-button soft-button" data-lift="bench_press">Bench Press</button>
+          <button type="button" class="prefill-button soft-button" data-lift="deadlift">Deadlift</button>
+        </div>
+      </section>
 
-    <section class="card">
-      <h2>Plate Loading</h2>
-      <div id="plate-loading">Enter a weight to see plate loading.</div>
-    </section>
+      <section class="card">
+        <h2>Plate Loading</h2>
+        <div id="plate-loading" class="number-band">Enter a weight to see plate loading.</div>
+      </section>
 
-    <section class="card">
-      <h2>Timer</h2>
-      <div class="grid">
-        <label>
-          Target rest (seconds)
-          <input type="number" id="timer-target" min="1" value="90">
-        </label>
-        <button type="button" id="start-timer">Start timer</button>
-        <button type="button" id="stop-timer">Stop timer</button>
-      </div>
-      <p id="timer-display">Timer idle.</p>
-    </section>
-
-    <section class="card">
-      <h2>Sets</h2>
-      <div id="set-list"></div>
+      <section class="card">
+        <h2>Timer</h2>
+        <div class="section-stack">
+          <label>
+            Target rest (seconds)
+            <input type="number" id="timer-target" min="1" value="90">
+          </label>
+          <div class="button-row">
+            <button type="button" id="start-timer">Start timer</button>
+            <button type="button" id="stop-timer" class="soft-button">Stop timer</button>
+          </div>
+          <div id="timer-display" class="number-band">Timer idle.</div>
+        </div>
+      </section>
     </section>
   </div>
 

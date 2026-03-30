@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from http import HTTPStatus
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 
 from .config_service import ValidationError, get_config, update_big3, update_inventory
 from .db import get_db
@@ -12,7 +12,7 @@ config_bp = Blueprint("config", __name__)
 
 @config_bp.get("/api/config")
 def get_config_route():
-    return jsonify(get_config(get_db()))
+    return jsonify(get_config(get_db(), dict(current_app.config)))
 
 
 @config_bp.put("/api/config/inventory")

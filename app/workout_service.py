@@ -9,7 +9,7 @@ from typing import Any
 from .db import execute_write
 from .set_service import list_sets
 from .time_utils import utc_now
-from .validation import validate_uuid, validate_workout_type
+from .validation import validate_manual_workout_type, validate_uuid
 
 
 @dataclass(frozen=True)
@@ -21,7 +21,7 @@ class OperationResult:
 def create_draft(connection: sqlite3.Connection, payload: dict[str, Any]) -> OperationResult:
     operation_id = validate_uuid(payload.get("operation_id"), "operation_id")
     workout_id = validate_uuid(payload.get("workout_id"), "workout_id")
-    workout_type = validate_workout_type(payload.get("type"))
+    workout_type = validate_manual_workout_type(payload.get("type"))
     started_at = _require_non_empty(payload.get("started_at"), "started_at")
     client_timestamp = _require_non_empty(payload.get("client_timestamp"), "client_timestamp")
 

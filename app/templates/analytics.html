@@ -2,19 +2,28 @@
 {% block title %}Analytics | Workout Companion{% endblock %}
 {% block content %}
   <section class="page-header">
-    <p>History and trends</p>
+    <p class="eyebrow">History + Trends</p>
     <h1>Analytics</h1>
   </section>
 
-  <div class="grid">
+  <div class="grid two-up">
     <section class="card">
-      <h2>Big 3 Estimated 1RM</h2>
+      <div class="section-header">
+        <div>
+          <h2>Big 3 Estimated 1RM</h2>
+        </div>
+      </div>
       {% for lift, items in analytics.big3_estimated_1rm_trend.items() %}
-        <h3>{{ lift }}</h3>
+        <h3>{{ lift|replace('_', ' ')|title }}</h3>
         {% if items %}
-          {% for item in items %}
-            <p>{{ item.started_at }}: {{ item.estimated_1rm }} kg</p>
-          {% endfor %}
+          <div class="analytics-list">
+            {% for item in items %}
+              <div class="analytics-row">
+                <span>{{ item.started_at }}</span>
+                <span>{{ item.estimated_1rm }} kg</span>
+              </div>
+            {% endfor %}
+          </div>
         {% else %}
           <p>No data yet.</p>
         {% endif %}
@@ -22,22 +31,40 @@
     </section>
 
     <section class="card">
-      <h2>Cardio Personal Bests</h2>
+      <div class="section-header">
+        <div>
+          <h2>Cardio Personal Bests</h2>
+        </div>
+      </div>
       {% if analytics.cardio_personal_bests %}
-        {% for item in analytics.cardio_personal_bests %}
-          <p>{{ item.activity_type }}: {{ item.distance_meters }} m on {{ item.started_at }}</p>
-        {% endfor %}
+        <div class="analytics-list">
+          {% for item in analytics.cardio_personal_bests %}
+            <div class="analytics-row">
+              <span>{{ item.activity_type|replace('_', ' ')|title }}</span>
+              <span>{{ item.distance_meters }} m</span>
+            </div>
+          {% endfor %}
+        </div>
       {% else %}
         <p>No cardio data yet.</p>
       {% endif %}
     </section>
 
     <section class="card">
-      <h2>Calories Per Minute</h2>
+      <div class="section-header">
+        <div>
+          <h2>Calories Per Minute</h2>
+        </div>
+      </div>
       {% if analytics.calories_per_minute_trend %}
-        {% for item in analytics.calories_per_minute_trend %}
-          <p>{{ item.started_at }}: {{ item.calories_per_minute }} cal/min</p>
-        {% endfor %}
+        <div class="analytics-list">
+          {% for item in analytics.calories_per_minute_trend %}
+            <div class="analytics-row">
+              <span>{{ item.started_at }}</span>
+              <span>{{ item.calories_per_minute }} cal/min</span>
+            </div>
+          {% endfor %}
+        </div>
       {% else %}
         <p>No calorie data yet.</p>
       {% endif %}

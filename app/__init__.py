@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from flask import Flask
@@ -16,6 +17,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.config.from_mapping(
         DATABASE=str(default_db_path),
         SECRET_KEY="dev",
+        GARMIN_TOKEN_PATH=os.environ.get("GARMIN_TOKEN_PATH"),
     )
 
     if test_config:

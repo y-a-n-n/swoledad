@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from flask import Blueprint, render_template
+from flask import Blueprint, current_app, render_template
 
 from .analytics_service import get_analytics_payload
 from .dashboard_service import get_dashboard_payload
@@ -13,12 +13,12 @@ pages_bp = Blueprint("pages", __name__)
 
 @pages_bp.get("/")
 def dashboard_page():
-    return render_template("dashboard.html", dashboard=get_dashboard_payload(get_db()))
+    return render_template("dashboard.html", dashboard=get_dashboard_payload(get_db(), dict(current_app.config)))
 
 
 @pages_bp.get("/admin")
 def admin_page():
-    return render_template("admin.html", config=get_config(get_db()))
+    return render_template("admin.html", config=get_config(get_db(), dict(current_app.config)))
 
 
 @pages_bp.get("/workouts/<workout_id>")
