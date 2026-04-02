@@ -51,8 +51,7 @@ def test_get_config_returns_expected_defaults(client):
 def test_get_config_marks_garmin_ready_when_token_store_exists(client, app, tmp_path):
     token_dir = tmp_path / "garmin-tokens"
     token_dir.mkdir()
-    (token_dir / "oauth1_token.json").write_text("{}", encoding="utf-8")
-    (token_dir / "oauth2_token.json").write_text("{}", encoding="utf-8")
+    (token_dir / "native-oauth2.json").write_text("{}", encoding="utf-8")
     app.config["GARMIN_TOKEN_PATH"] = str(token_dir)
     app.config["GARMIN_PACKAGE_INSTALLED"] = True
 
