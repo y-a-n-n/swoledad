@@ -102,6 +102,31 @@ def test_ambiguous_candidates_remain_pending_review(client, app):
     assert pending[0]["status"] == "pending_review"
 
 
+def test_pending_imports_include_suggested_workout_when_multiple_candidates(client, app):
+    first_workout_id = "11111111-1111-4111-8111-111111111111"
+    second_workout_id = "22222222-2222-4222-8222-222222222222"
+    seed_workout(app, first_workout_id, "cross_training", "2026-03-28T10:05:00Z")
+    seed_workout(app, second_workout_id, "cross_training", "2026-03-28T10:10:00Z")
+    pending = sync_one(client, app, _activity(activity_id="999999"))
+
+    assert len(pending) == 1
+    assert pending[0]["suggested_workout_id"] == first_workout_id
+    assert pending[0]["candidate_workouts"] == [
+        {
+            "id": first_workout_id,
+            "type": "cross_training",
+            "status": "finalized",
+            "started_at": "2026-03-28T10:05:00Z",
+        },
+        {
+            "id": second_workout_id,
+            "type": "cross_training",
+            "status": "finalized",
+            "started_at": "2026-03-28T10:10:00Z",
+        },
+    ]
+
+
 def test_dismiss_prevents_resurfacing_on_subsequent_sync(client, app):
     pending = sync_one(client, app, _activity())
     external_id = pending[0]["id"]

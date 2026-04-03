@@ -131,3 +131,5 @@ def test_get_pending_imports_returns_normalized_rows(client, app):
     items = response.get_json()["items"]
     assert items[0]["provider"] == "garmin"
     assert items[0]["activity_type"] == "running"
+    assert items[0]["candidate_workouts"] == []
+    assert items[0]["suggested_workout_id"] is None

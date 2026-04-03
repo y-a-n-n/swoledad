@@ -74,8 +74,19 @@
               <div class="grid compact">
                 <button type="button" class="accept-import" data-external-id="{{ item.id }}">Accept</button>
                 <button type="button" class="dismiss-import soft-button" data-external-id="{{ item.id }}">Dismiss</button>
-                <input type="text" class="link-workout-id" placeholder="Workout UUID">
-                <button type="button" class="link-import soft-button" data-external-id="{{ item.id }}">Link</button>
+                {% if item.candidate_workouts %}
+                  <select class="link-workout-id">
+                    {% for workout in item.candidate_workouts %}
+                      <option value="{{ workout.id }}" {% if workout.id == item.suggested_workout_id %}selected{% endif %}>
+                        {{ workout.type|replace('_', ' ')|title }} · {{ workout.status|title }} · {{ workout.started_at }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                  <button type="button" class="link-import soft-button" data-external-id="{{ item.id }}">Link workout</button>
+                {% else %}
+                  <span class="muted">No matching workout found</span>
+                  <button type="button" class="link-import soft-button" data-external-id="{{ item.id }}" disabled>Link workout</button>
+                {% endif %}
               </div>
             </div>
           {% endfor %}

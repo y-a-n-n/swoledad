@@ -267,12 +267,16 @@ After the review pass against `main`, the Garmin status/auth flow was tightened 
 - status now also requires `GARMIN_USERNAME` and `GARMIN_PASSWORD`, because the current refresh path still depends on them at runtime
 - dependency detection was restored for the new stack by checking that `httpx` and `playwright` are actually importable
 - a 401 from Garmin activity search now forces a refresh attempt instead of blindly retrying with the same locally cached token
+- pending running/cycling imports on the dashboard no longer ask for a pasted workout UUID
+- the pending-import payload now includes compatible candidate workouts plus a `suggested_workout_id`
+- the dashboard link UI now renders a preselected workout dropdown and disables linking when there is no compatible candidate
 
 Regression coverage was added for:
 
 - token store present but missing runtime credentials
 - missing dependency detection for the new Garmin flow
 - forced refresh behavior after a 401 from the Garmin activities API
+- pending-import candidate/suggestion payload for dashboard linking
 
 Notes:
 
