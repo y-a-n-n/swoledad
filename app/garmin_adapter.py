@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from importlib.util import find_spec
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -52,7 +53,7 @@ def garmin_package_installed(app_config: dict[str, Any]) -> bool:
     override = app_config.get("GARMIN_PACKAGE_INSTALLED")
     if override is not None:
         return bool(override)
-    return True
+    return find_spec("httpx") is not None and find_spec("playwright") is not None
 
 
 def garmin_token_store_ready(token_path: str | None) -> bool:
@@ -67,12 +68,14 @@ def get_garmin_connection_status(
     checkpoint = checkpoint or {}
     token_path = str(resolve_garmin_token_path(app_config.get("GARMIN_TOKEN_PATH")))
     package_installed = garmin_package_installed(app_config)
-    configured = garmin_token_store_ready(app_config.get("GARMIN_TOKEN_PATH"))
+    token_store_ready = garmin_token_store_ready(app_config.get("GARMIN_TOKEN_PATH"))
+    credentials_configured = bool(app_config.get("GARMIN_USERNAME")) and bool(app_config.get("GARMIN_PASSWORD"))
+    configured = package_installed and token_store_ready and credentials_configured
     last_status = checkpoint.get("last_status")
     last_error = checkpoint.get("last_error")
     legacy_error = isinstance(last_error, str) and "garminconnect" in last_error.lower()
 
-    if configured and legacy_error:
+    if token_store_ready and legacy_error:
         last_status = None
         last_error = None
 
@@ -81,11 +84,16 @@ def get_garmin_connection_status(
         sync_ready = False
         status_label = "Garmin client not installed"
         detail = "Install the pirate-garmin browser dependencies in the app environment."
-    elif not configured:
+    elif not token_store_ready:
         state = "needs_token_bootstrap"
         sync_ready = False
         status_label = "Garmin sign-in required"
         detail = "Create local Garmin tokens on this laptop before syncing."
+    elif not credentials_configured:
+        state = "missing_credentials"
+        sync_ready = False
+        status_label = "Garmin credentials missing"
+        detail = "Set GARMIN_USERNAME and GARMIN_PASSWORD in the app environment before syncing."
     elif last_status == "authentication_failure":
         state = "reauth_required"
         sync_ready = False
@@ -120,6 +128,8 @@ def get_garmin_connection_status(
     return {
         "provider": "garmin",
         "configured": configured,
+        "token_store_ready": token_store_ready,
+        "credentials_configured": credentials_configured,
         "package_installed": package_installed,
         "token_path": token_path,
         "state": state,

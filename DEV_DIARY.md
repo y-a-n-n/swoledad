@@ -259,6 +259,21 @@ The README has been updated several times and now reflects:
 
 App startup now has a small built-in `.env` loader in [__init__.py](/home/yann/workout/app/__init__.py).
 
+## Latest Fixes On `garmin-flow`
+
+After the review pass against `main`, the Garmin status/auth flow was tightened up in the branch:
+
+- Garmin connection status no longer reports `configured` / `sync_ready` just because `native-oauth2.json` exists
+- status now also requires `GARMIN_USERNAME` and `GARMIN_PASSWORD`, because the current refresh path still depends on them at runtime
+- dependency detection was restored for the new stack by checking that `httpx` and `playwright` are actually importable
+- a 401 from Garmin activity search now forces a refresh attempt instead of blindly retrying with the same locally cached token
+
+Regression coverage was added for:
+
+- token store present but missing runtime credentials
+- missing dependency detection for the new Garmin flow
+- forced refresh behavior after a 401 from the Garmin activities API
+
 Notes:
 
 - it reads `.env` from the current working directory

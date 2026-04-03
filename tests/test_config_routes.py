@@ -54,6 +54,8 @@ def test_get_config_marks_garmin_ready_when_token_store_exists(client, app, tmp_
     (token_dir / "native-oauth2.json").write_text("{}", encoding="utf-8")
     app.config["GARMIN_TOKEN_PATH"] = str(token_dir)
     app.config["GARMIN_PACKAGE_INSTALLED"] = True
+    app.config["GARMIN_USERNAME"] = "tester@example.com"
+    app.config["GARMIN_PASSWORD"] = "secret"
 
     response = client.get("/api/config")
 

@@ -173,14 +173,22 @@ class PirateGarminAuthManager:
         self.app_dir.mkdir(parents=True, exist_ok=True)
         self.native_oauth2_path.write_text(json.dumps(session.to_dict(), indent=2) + "\n", encoding="utf-8")
 
-    def ensure_authenticated(self) -> NativeOAuth2Session:
+    def ensure_authenticated(self, *, force_refresh: bool = False) -> NativeOAuth2Session:
         session = self.load_native_session()
         if session is None:
             session = self.create_native_session()
             self.save_native_session(session)
             return session
-        if _token_needs_refresh(session.di.token):
-            if _refresh_token_expired(session.di.token):
+        if force_refresh or _token_needs_refresh(session.di.token):
+            if force_refresh and not _refresh_token_expired(session.di.token):
+                refreshed_slot = self.refresh_di_token_slot(session.di)
+                session = NativeOAuth2Session(
+                    created_at=_utc_now_iso(),
+                    login_client_id=session.login_client_id,
+                    service_url=session.service_url,
+                    di=refreshed_slot,
+                )
+            elif _refresh_token_expired(session.di.token):
                 session = self.create_native_session()
             else:
                 session = NativeOAuth2Session(
@@ -314,7 +322,7 @@ def list_activities(
             },
         )
     if response.status_code == 401:
-        session = auth.ensure_authenticated()
+        session = auth.ensure_authenticated(force_refresh=True)
         with httpx.Client(follow_redirects=True, timeout=timeout) as client:
             response = client.get(
                 f"{CONNECT_API_BASE_URL}/activitylist-service/activities/search/activities",
