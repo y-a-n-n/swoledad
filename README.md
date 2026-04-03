@@ -20,6 +20,7 @@ Single-user, self-hosted workout logging app built with Flask, SQLite, Jinja, an
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
+.venv/bin/python -m playwright install chromium
 ```
 
 ## Run
@@ -48,25 +49,58 @@ The app will initialize its SQLite database on first boot.
 
 The Garmin adapter is wrapped behind `app/garmin_adapter.py`.
 
-The app expects a local OAuth token store, not a saved Garmin password.
+The app now uses a `pirate-garmin` style auth flow:
 
-1. Install the package:
+- fresh Garmin login happens in a real Chromium browser
+- the bootstrap captures Garmin's mobile service ticket
+- the app exchanges that ticket for native OAuth tokens
+- tokens are cached locally in `native-oauth2.json`
+- later syncs reuse and refresh those cached tokens
+
+1. Install dependencies and Chromium:
 
 ```bash
 .venv/bin/pip install -e '.[dev]'
+.venv/bin/python -m playwright install chromium
 ```
 
 2. Bootstrap tokens on the same laptop that runs Flask:
 
 ```bash
-.venv/bin/python scripts/bootstrap_garmin_tokens.py --token-path ~/.garminconnect
+.venv/bin/python scripts/bootstrap_garmin_tokens.py --token-path ~/.local/share/pirate-garmin
 ```
 
-3. Start Flask with the token path:
+This opens a real Chromium login flow against Garmin mobile SSO and writes:
+
+- `~/.local/share/pirate-garmin/native-oauth2.json`
+
+3. Put your Garmin settings in a repo-local `.env` file:
+
+```dotenv
+GARMIN_TOKEN_PATH=/home/yann/.local/share/pirate-garmin
+GARMIN_USERNAME=you@example.com
+GARMIN_PASSWORD='secret'
+```
+
+The app has a built-in `.env` loader. Exported shell variables still take precedence if you set both.
+
+4. Start Flask normally:
 
 ```bash
-GARMIN_TOKEN_PATH=~/.garminconnect FLASK_APP=app:create_app .venv/bin/flask run --debug --host 0.0.0.0 --port 5000
+FLASK_APP=app:create_app .venv/bin/flask run --debug --host 0.0.0.0 --port 5000
 ```
+
+If you prefer shell env vars instead of `.env`, this is equivalent:
+
+```bash
+GARMIN_TOKEN_PATH=~/.local/share/pirate-garmin GARMIN_USERNAME=you@example.com GARMIN_PASSWORD='secret' FLASK_APP=app:create_app .venv/bin/flask run --debug --host 0.0.0.0 --port 5000
+```
+
+Notes:
+
+- the current refresh path still expects `GARMIN_USERNAME` and `GARMIN_PASSWORD` in the app environment
+- the admin page should show `Garmin connected` once `native-oauth2.json` exists and the server is started with the Garmin env vars
+- if Garmin status looks stale after code changes, restart the Flask dev server
 
 For tests and local development, the sync layer also supports injecting `GARMIN_ADAPTER_FACTORY` via app config.
 

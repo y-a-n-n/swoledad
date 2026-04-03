@@ -1,9 +1,18 @@
 from __future__ import annotations
 
 from importlib.util import find_spec
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
+
+from .pirate_garmin_client import (
+    BrowserDependencyError,
+    PirateGarminError,
+    bootstrap_with_browser,
+    default_app_dir,
+    list_activities as list_activities_with_pirate_garmin,
+)
 
 
 class GarminAuthError(RuntimeError):
@@ -27,7 +36,7 @@ class GarminAdapter(Protocol):
         ...
 
 
-DEFAULT_GARMIN_TOKEN_PATH = "~/.garminconnect"
+DEFAULT_GARMIN_TOKEN_PATH = str(default_app_dir())
 
 
 @dataclass
@@ -44,16 +53,12 @@ def garmin_package_installed(app_config: dict[str, Any]) -> bool:
     override = app_config.get("GARMIN_PACKAGE_INSTALLED")
     if override is not None:
         return bool(override)
-    return find_spec("garminconnect") is not None
+    return find_spec("httpx") is not None and find_spec("playwright") is not None
 
 
 def garmin_token_store_ready(token_path: str | None) -> bool:
     token_dir = resolve_garmin_token_path(token_path)
-    return (
-        token_dir.exists()
-        and (token_dir / "oauth1_token.json").exists()
-        and (token_dir / "oauth2_token.json").exists()
-    )
+    return token_dir.exists() and (token_dir / "native-oauth2.json").exists()
 
 
 def get_garmin_connection_status(
@@ -63,20 +68,32 @@ def get_garmin_connection_status(
     checkpoint = checkpoint or {}
     token_path = str(resolve_garmin_token_path(app_config.get("GARMIN_TOKEN_PATH")))
     package_installed = garmin_package_installed(app_config)
-    configured = garmin_token_store_ready(app_config.get("GARMIN_TOKEN_PATH"))
+    token_store_ready = garmin_token_store_ready(app_config.get("GARMIN_TOKEN_PATH"))
+    credentials_configured = bool(app_config.get("GARMIN_USERNAME")) and bool(app_config.get("GARMIN_PASSWORD"))
+    configured = package_installed and token_store_ready and credentials_configured
     last_status = checkpoint.get("last_status")
     last_error = checkpoint.get("last_error")
+    legacy_error = isinstance(last_error, str) and "garminconnect" in last_error.lower()
+
+    if token_store_ready and legacy_error:
+        last_status = None
+        last_error = None
 
     if not package_installed:
         state = "missing_client"
         sync_ready = False
         status_label = "Garmin client not installed"
-        detail = "Install the garminconnect package in the app environment."
-    elif not configured:
+        detail = "Install the pirate-garmin browser dependencies in the app environment."
+    elif not token_store_ready:
         state = "needs_token_bootstrap"
         sync_ready = False
         status_label = "Garmin sign-in required"
         detail = "Create local Garmin tokens on this laptop before syncing."
+    elif not credentials_configured:
+        state = "missing_credentials"
+        sync_ready = False
+        status_label = "Garmin credentials missing"
+        detail = "Set GARMIN_USERNAME and GARMIN_PASSWORD in the app environment before syncing."
     elif last_status == "authentication_failure":
         state = "reauth_required"
         sync_ready = False
@@ -111,6 +128,8 @@ def get_garmin_connection_status(
     return {
         "provider": "garmin",
         "configured": configured,
+        "token_store_ready": token_store_ready,
+        "credentials_configured": credentials_configured,
         "package_installed": package_installed,
         "token_path": token_path,
         "state": state,
@@ -128,40 +147,45 @@ class GarminConnectAdapter:
 
     def list_activities(self, start_iso: str, end_iso: str) -> list[dict[str, Any]]:
         try:
-            from garminconnect import (
-                Garmin,
-                GarminConnectAuthenticationError,
-                GarminConnectConnectionError,
-                GarminConnectTooManyRequestsError,
+            token_dir = resolve_garmin_token_path(self.secret_config.token_path)
+            if not garmin_token_store_ready(str(token_dir)):
+                raise GarminSetupRequiredError(
+                    f"Garmin tokens are missing at {token_dir}. Run the browser bootstrap command from the admin page."
+                )
+            username = os.environ.get("GARMIN_USERNAME")
+            password = os.environ.get("GARMIN_PASSWORD")
+            if not username or not password:
+                raise GarminSetupRequiredError("GARMIN_USERNAME and GARMIN_PASSWORD must be set for Garmin token refresh.")
+            activities = list_activities_with_pirate_garmin(
+                username=username,
+                password=password,
+                app_dir=token_dir,
+                start_date=start_iso[:10],
+                end_date=end_iso[:10],
             )
-        except ImportError as exc:  # pragma: no cover
-            raise GarminSetupRequiredError("garminconnect is not installed in the app environment") from exc
-
-        token_dir = resolve_garmin_token_path(self.secret_config.token_path)
-        if not garmin_token_store_ready(str(token_dir)):
+            return activities
+        except BrowserDependencyError as exc:  # pragma: no cover
             raise GarminSetupRequiredError(
-                f"Garmin tokens are missing at {token_dir}. Run the bootstrap command from the admin page."
+                "Garmin browser bootstrap requires Playwright and Chromium in the app environment."
             )
-
-        try:
-            client = Garmin()
-            client.login(tokenstore=str(token_dir))
-            activities = client.get_activities_by_date(start_iso[:10], end_iso[:10])
-        except FileNotFoundError as exc:  # pragma: no cover
-            raise GarminSetupRequiredError(
-                f"Garmin tokens are missing at {token_dir}. Run the bootstrap command from the admin page."
-            ) from exc
-        except GarminConnectAuthenticationError as exc:  # pragma: no cover
-            raise GarminAuthError("stored Garmin credentials were rejected") from exc
-        except (GarminConnectConnectionError, GarminConnectTooManyRequestsError) as exc:  # pragma: no cover
-            raise GarminNetworkError("unable to reach Garmin") from exc
         except OSError as exc:  # pragma: no cover
             raise GarminNetworkError("unable to reach Garmin") from exc
         except ValueError as exc:  # pragma: no cover
             raise GarminParseError("unexpected Garmin payload") from exc
-        except Exception as exc:  # pragma: no cover
-            raise GarminAuthError(str(exc)) from exc
-        return activities
+        except PirateGarminError as exc:  # pragma: no cover
+            message = str(exc)
+            if "429" in message:
+                raise GarminNetworkError(message) from exc
+            raise GarminAuthError(message) from exc
+
+
+def bootstrap_garmin_token_store(*, username: str, password: str, token_path: str | None, headless: bool = False) -> Path:
+    return bootstrap_with_browser(
+        username=username,
+        password=password,
+        app_dir=resolve_garmin_token_path(token_path),
+        headless=headless,
+    )
 
 
 def build_garmin_adapter(app_config: dict[str, Any]) -> GarminAdapter:

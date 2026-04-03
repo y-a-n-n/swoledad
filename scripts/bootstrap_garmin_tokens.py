@@ -4,32 +4,32 @@ import argparse
 from getpass import getpass
 from pathlib import Path
 
-from garminconnect import Garmin
-
-
-def _prompt_mfa() -> str:
-    return input("Garmin MFA code: ").strip()
+from app.garmin_adapter import bootstrap_garmin_token_store
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Create a local Garmin token store for the workout app.")
     parser.add_argument(
         "--token-path",
-        default="~/.garminconnect",
-        help="Directory where oauth1_token.json and oauth2_token.json will be stored.",
+        default="~/.local/share/pirate-garmin",
+        help="Directory where native-oauth2.json will be stored.",
     )
+    parser.add_argument("--headless", action="store_true", help="Run Chromium headlessly.")
     args = parser.parse_args()
 
     token_path = Path(args.token_path).expanduser()
     email = input("Garmin email: ").strip()
     password = getpass("Garmin password: ")
-    client = Garmin(email=email, password=password, prompt_mfa=_prompt_mfa)
-    client.login()
-    client.garth.dump(str(token_path))
+    token_file = bootstrap_garmin_token_store(
+        username=email,
+        password=password,
+        token_path=str(token_path),
+        headless=args.headless,
+    )
 
     print("")
-    print(f"Saved Garmin tokens to {token_path}")
-    print(f"Start the app with GARMIN_TOKEN_PATH={token_path}")
+    print(f"Saved Garmin tokens to {token_file}")
+    print(f"Start the app with GARMIN_TOKEN_PATH={token_path} GARMIN_USERNAME={email}")
     return 0
 
 

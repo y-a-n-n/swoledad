@@ -15,7 +15,7 @@ from .garmin_adapter import (
     GarminSetupRequiredError,
     build_garmin_adapter,
 )
-from .reconciliation_service import reconcile_external_activity
+from .reconciliation_service import find_candidate_workouts, reconcile_external_activity
 from .time_utils import utc_now
 
 COOLDOWN_MINUTES = 10
@@ -202,7 +202,14 @@ def list_pending_imports(connection: sqlite3.Connection) -> list[dict[str, Any]]
         ORDER BY started_at DESC
         """
     ).fetchall()
-    return [dict(row) for row in rows]
+    items = []
+    for row in rows:
+        item = dict(row)
+        candidates = find_candidate_workouts(connection, item["id"])
+        item["candidate_workouts"] = candidates
+        item["suggested_workout_id"] = _suggest_workout_id(item["started_at"], candidates)
+        items.append(item)
+    return items
 
 
 def get_sync_status(connection: sqlite3.Connection) -> dict[str, Any]:
@@ -277,6 +284,20 @@ def _normalize_activity_type(type_key: str) -> str:
     if normalized == "strength_training":
         return "strength"
     return normalized
+
+
+def _suggest_workout_id(started_at: str, candidates: list[dict[str, Any]]) -> str | None:
+    if not candidates:
+        return None
+    activity_started_at = _parse_iso(started_at)
+    best = min(
+        candidates,
+        key=lambda candidate: (
+            abs((_parse_iso(candidate["started_at"]) - activity_started_at).total_seconds()),
+            candidate["started_at"],
+        ),
+    )
+    return str(best["id"])
 
 
 def _parse_iso(value: str) -> datetime:

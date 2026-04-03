@@ -65,12 +65,12 @@
         <div>Status: {{ config.external_connection_status.status_label }}</div>
       </div>
       {% if not config.external_connection_status.package_installed %}
-        <p class="muted" style="margin-top: 1rem;">Install the Garmin client in the app environment first.</p>
-        <pre><code>.venv/bin/pip install garminconnect</code></pre>
+        <p class="muted" style="margin-top: 1rem;">Install the browser-backed Garmin client dependencies in the app environment first.</p>
+        <pre><code>.venv/bin/pip install httpx playwright</code></pre>
       {% elif not config.external_connection_status.configured or config.external_connection_status.state == "reauth_required" %}
-        <p class="muted" style="margin-top: 1rem;">Run this once on the laptop that hosts the app. It prompts for Garmin email, password, and MFA if needed, then writes local OAuth tokens.</p>
+        <p class="muted" style="margin-top: 1rem;">Run this once on the laptop that hosts the app. It opens a real Chromium login flow, captures the Garmin mobile service ticket, and writes cached native OAuth tokens.</p>
         <pre><code>.venv/bin/python scripts/bootstrap_garmin_tokens.py --token-path "{{ config.external_connection_status.token_path }}"</code></pre>
-        <p class="muted">Start the server with <code>GARMIN_TOKEN_PATH="{{ config.external_connection_status.token_path }}"</code> so sync can reuse those tokens.</p>
+        <p class="muted">Start the server with <code>GARMIN_TOKEN_PATH="{{ config.external_connection_status.token_path }}"</code>, <code>GARMIN_USERNAME</code>, and <code>GARMIN_PASSWORD</code> so refresh and sync can reuse those tokens.</p>
       {% else %}
         <p class="muted" style="margin-top: 1rem;">Garmin background sync is configured on this machine.</p>
       {% endif %}

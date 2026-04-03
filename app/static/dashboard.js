@@ -224,6 +224,39 @@ function renderResumeCard(draft) {
   `;
 }
 
+function renderPendingImportCard(item) {
+  const candidateMarkup =
+    item.candidate_workouts && item.candidate_workouts.length > 0
+      ? `
+        <select class="link-workout-id">
+          ${item.candidate_workouts
+            .map(
+              (workout) => `
+                <option value="${workout.id}" ${workout.id === item.suggested_workout_id ? "selected" : ""}>
+                  ${workout.type.replaceAll("_", " ")} · ${workout.status} · ${workout.started_at}
+                </option>
+              `,
+            )
+            .join("")}
+        </select>
+        <button type="button" class="link-import" data-external-id="${item.id}">Link workout</button>
+      `
+      : `
+        <span class="muted">No matching workout found</span>
+        <button type="button" class="link-import" data-external-id="${item.id}" disabled>Link workout</button>
+      `;
+  return `
+    <div class="status" data-external-id="${item.id}">
+      <p>${item.activity_type} at ${item.started_at}</p>
+      <div class="grid">
+        <button type="button" class="accept-import" data-external-id="${item.id}">Accept</button>
+        <button type="button" class="dismiss-import" data-external-id="${item.id}">Dismiss</button>
+        ${candidateMarkup}
+      </div>
+    </div>
+  `;
+}
+
 async function hydrateDashboard() {
   const drafts = await listLocalDrafts();
   if (drafts.length > 0) {
@@ -280,21 +313,7 @@ async function refreshPendingImports() {
     imports.innerHTML = "<p>No pending imports yet.</p>";
     return;
   }
-  imports.innerHTML = payload.items
-    .map(
-      (item) => `
-        <div class="status" data-external-id="${item.id}">
-          <p>${item.activity_type} at ${item.started_at}</p>
-          <div class="grid">
-            <button type="button" class="accept-import" data-external-id="${item.id}">Accept</button>
-            <button type="button" class="dismiss-import" data-external-id="${item.id}">Dismiss</button>
-            <input type="text" class="link-workout-id" placeholder="Workout UUID">
-            <button type="button" class="link-import" data-external-id="${item.id}">Link</button>
-          </div>
-        </div>
-      `,
-    )
-    .join("");
+  imports.innerHTML = payload.items.map((item) => renderPendingImportCard(item)).join("");
 }
 
 async function handlePendingImportAction(event) {
@@ -313,6 +332,9 @@ async function handlePendingImportAction(event) {
   } else if (target.classList.contains("link-import")) {
     const container = target.closest("[data-external-id]");
     const workoutId = container?.querySelector(".link-workout-id")?.value;
+    if (!workoutId) {
+      return;
+    }
     await fetch(`/api/external/pending-imports/${externalId}/link`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
