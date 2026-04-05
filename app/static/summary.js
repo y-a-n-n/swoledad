@@ -2,7 +2,7 @@ async function finalizeWorkout(event) {
   event.preventDefault();
   const workoutId = window.__summaryPage.workoutId;
   const operation = {
-    operation_id: crypto.randomUUID(),
+    operation_id: newUuid(),
     workout_id: workoutId,
     operation_type: "finalize_workout",
     client_timestamp: new Date().toISOString(),

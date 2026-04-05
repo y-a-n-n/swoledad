@@ -351,42 +351,68 @@ function nowIso() {
 }
 
 function newUuid() {
-  return crypto.randomUUID();
+  const c = globalThis.crypto;
+  if (c?.randomUUID) {
+    try {
+      return c.randomUUID();
+    } catch {
+      /* randomUUID() throws outside a secure context in some browsers */
+    }
+  }
+  const bytes = new Uint8Array(16);
+  if (c?.getRandomValues) {
+    c.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < 16; i += 1) {
+      bytes[i] = (Math.random() * 256) | 0;
+    }
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const h = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
 async function startWorkout(event) {
   event.preventDefault();
-  const type = document.getElementById("type-selector").value;
-  const workoutId = newUuid();
-  const timestamp = nowIso();
-  const operation = {
-    operation_id: newUuid(),
-    workout_id: workoutId,
-    operation_type: "create_draft",
-    client_timestamp: timestamp,
-    payload: {
-      type,
-      started_at: timestamp,
-    },
-  };
-  const draft = {
-    workout_id: workoutId,
-    workout_type: type,
-    status: "draft",
-    started_at: timestamp,
-    exercise_rows: [],
-    set_rows: [],
-    pending_operation_ids: [operation.operation_id],
-    timer_state: null,
-    last_local_write_at: operation.client_timestamp,
-  };
-  await saveLocalDraft(draft, operation);
   try {
-    await flushQueuedOperations();
-  } catch (_error) {
-    // Navigation should still proceed from local state.
+    const type = document.getElementById("type-selector").value;
+    const workoutId = newUuid();
+    const timestamp = nowIso();
+    const operation = {
+      operation_id: newUuid(),
+      workout_id: workoutId,
+      operation_type: "create_draft",
+      client_timestamp: timestamp,
+      payload: {
+        type,
+        started_at: timestamp,
+      },
+    };
+    const draft = {
+      workout_id: workoutId,
+      workout_type: type,
+      status: "draft",
+      started_at: timestamp,
+      exercise_rows: [],
+      set_rows: [],
+      pending_operation_ids: [operation.operation_id],
+      timer_state: null,
+      last_local_write_at: operation.client_timestamp,
+    };
+    await saveLocalDraft(draft, operation);
+    try {
+      await flushQueuedOperations();
+    } catch (_error) {
+      // Navigation should still proceed from local state.
+    }
+    window.location.assign(`/workouts/${workoutId}`);
+  } catch (error) {
+    console.error("Start workout failed:", error);
+    window.alert(
+      "Could not start a workout. The site needs IndexedDB (site data) enabled. If you opened this app via a LAN IP (not localhost), your browser may block storage; try http://127.0.0.1 or http://localhost instead.",
+    );
   }
-  window.location.assign(`/workouts/${workoutId}`);
 }
 
 document.getElementById("start-workout-form")?.addEventListener("submit", startWorkout);

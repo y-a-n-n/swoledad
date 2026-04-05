@@ -11,11 +11,11 @@
       <p class="eyebrow" style="color: rgba(255,255,255,0.72);">Ready To Train</p>
       <h2>Start the next session without waiting on sync.</h2>
       <form id="start-workout-form" class="stack" style="margin-top: 1.2rem;">
-        <label>
+        <label class="workout-type-field">
           Workout type
-          <select name="type" id="type-selector">
-            {% for option in ["strength", "cross_training"] %}
-              <option value="{{ option }}" {% if option == dashboard.last_workout_type %}selected{% endif %}>{{ option }}</option>
+          <select name="type" id="type-selector" aria-label="Workout type">
+            {% for value, label in [("strength", "Strength"), ("cross_training", "Cross training")] %}
+              <option value="{{ value }}" {% if value == dashboard.last_workout_type %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
         </label>

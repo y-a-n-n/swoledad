@@ -162,10 +162,10 @@ async function mutateLocalDraft(mutator) {
 async function upsertSet(event) {
   event.preventDefault();
   const workoutId = currentWorkoutId();
-  const setId = document.getElementById("set-id").value || crypto.randomUUID();
+  const setId = document.getElementById("set-id").value || newUuid();
   document.getElementById("set-id").value = setId;
   const operation = {
-    operation_id: crypto.randomUUID(),
+    operation_id: newUuid(),
     workout_id: workoutId,
     operation_type: "upsert_set",
     client_timestamp: new Date().toISOString(),
@@ -202,7 +202,7 @@ async function deleteSelectedSet() {
     return;
   }
   const operation = {
-    operation_id: crypto.randomUUID(),
+    operation_id: newUuid(),
     workout_id: workoutId,
     operation_type: "delete_set",
     client_timestamp: new Date().toISOString(),
