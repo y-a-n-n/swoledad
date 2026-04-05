@@ -224,7 +224,18 @@ function renderResumeCard(draft) {
   `;
 }
 
+function titleCaseWords(value) {
+  return String(value || "")
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function renderPendingImportCard(item) {
+  const activityLabel = titleCaseWords(item.activity_type);
+  const distance = item.distance_meters ?? 0;
+  const duration = item.duration_seconds ?? 0;
   const candidateMarkup =
     item.candidate_workouts && item.candidate_workouts.length > 0
       ? `
@@ -233,24 +244,30 @@ function renderPendingImportCard(item) {
             .map(
               (workout) => `
                 <option value="${workout.id}" ${workout.id === item.suggested_workout_id ? "selected" : ""}>
-                  ${workout.type.replaceAll("_", " ")} · ${workout.status} · ${workout.started_at}
+                  ${titleCaseWords(workout.type)} · ${titleCaseWords(workout.status)} · ${workout.started_at}
                 </option>
               `,
             )
             .join("")}
         </select>
-        <button type="button" class="link-import" data-external-id="${item.id}">Link workout</button>
+        <button type="button" class="link-import soft-button" data-external-id="${item.id}">Link workout</button>
       `
       : `
         <span class="muted">No matching workout found</span>
-        <button type="button" class="link-import" data-external-id="${item.id}" disabled>Link workout</button>
+        <button type="button" class="link-import soft-button" data-external-id="${item.id}" disabled>Link workout</button>
       `;
+  /* Keep structure in sync with dashboard.html so CSS (.list-item, .pill-row, .grid.compact) stays consistent */
   return `
-    <div class="status" data-external-id="${item.id}">
-      <p>${item.activity_type} at ${item.started_at}</p>
-      <div class="grid">
+    <div class="list-item" data-external-id="${item.id}">
+      <strong>${activityLabel}</strong>
+      <p>${item.started_at}</p>
+      <div class="pill-row">
+        <span class="pill">${distance} m</span>
+        <span class="pill">${duration} sec</span>
+      </div>
+      <div class="grid compact">
         <button type="button" class="accept-import" data-external-id="${item.id}">Accept</button>
-        <button type="button" class="dismiss-import" data-external-id="${item.id}">Dismiss</button>
+        <button type="button" class="dismiss-import soft-button" data-external-id="${item.id}">Dismiss</button>
         ${candidateMarkup}
       </div>
     </div>
