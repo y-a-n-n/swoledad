@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import os
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 import shlex
 
@@ -24,6 +26,10 @@ def create_app(test_config: dict | None = None) -> Flask:
         GARMIN_TOKEN_PATH=os.environ.get("GARMIN_TOKEN_PATH"),
         GARMIN_USERNAME=os.environ.get("GARMIN_USERNAME"),
         GARMIN_PASSWORD=os.environ.get("GARMIN_PASSWORD"),
+        # RotatingFileHandler: maxBytes × (backupCount + 1) caps total size; default ≤ 1 MiB.
+        LOG_FILE_PATH=str(Path(app.instance_path) / "workout.log"),
+        LOG_FILE_MAX_BYTES=524_288,
+        LOG_FILE_BACKUP_COUNT=1,
     )
 
     if test_config:
@@ -40,7 +46,40 @@ def create_app(test_config: dict | None = None) -> Flask:
         initialize_database(get_db())
 
     app.teardown_appcontext(close_db)
+    _configure_file_logging(app)
     return app
+
+
+def _configure_file_logging(app: Flask) -> None:
+    """Append logs under instance/ with rotation so total retained size stays bounded."""
+    if app.config.get("TESTING"):
+        return
+    if any(isinstance(h, RotatingFileHandler) for h in app.logger.handlers):
+        return
+
+    log_path = Path(app.config["LOG_FILE_PATH"])
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    handler = RotatingFileHandler(
+        log_path,
+        maxBytes=int(app.config["LOG_FILE_MAX_BYTES"]),
+        backupCount=int(app.config["LOG_FILE_BACKUP_COUNT"]),
+        encoding="utf-8",
+    )
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s %(levelname)s [%(name)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+
+    app.logger.setLevel(logging.INFO)
+    app.logger.addHandler(handler)
+
+    werkzeug_logger = logging.getLogger("werkzeug")
+    werkzeug_logger.addHandler(handler)
+    werkzeug_logger.setLevel(logging.INFO)
 
 
 def _load_dotenv(path: Path) -> None:
