@@ -719,6 +719,30 @@ textarea {
   gap: var(--space-6);
 }
 
+.history-list,
+.history-detail-layout,
+.history-set-list,
+.history-detail-hero {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.history-link {
+  text-decoration: none;
+  transition: background 100ms ease, color 100ms ease;
+}
+
+.history-link:hover {
+  background: var(--surface-container-high);
+}
+
+.history-stats-grid {
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  background: var(--surface-container-high);
+}
+
 .analytics-big3 {
   display: grid;
   gap: var(--space-4);

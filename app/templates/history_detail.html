@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}History Detail | Kinetic{% endblock %}
+{% block topbar_meta %}Read-Only Session{% endblock %}
+{% block content %}
+  <section class="history-detail-layout">
+    <section class="history-detail-hero">
+      <p class="eyebrow">Workout History</p>
+      <h1 class="display-title">{{ workout.type|replace('_', ' ')|title }}</h1>
+      <div class="pill-row">
+        <span class="pill">{{ workout.status|title }}</span>
+        <span class="pill">Started: {{ workout.started_at }}</span>
+        {% if workout.ended_at %}
+          <span class="pill">Ended: {{ workout.ended_at }}</span>
+        {% endif %}
+        {% if workout.feeling_score %}
+          <span class="pill">Feels: {{ workout.feeling_score }}/5</span>
+        {% endif %}
+      </div>
+      <div class="history-stats-grid">
+        <div class="number-band">
+          <span class="metric-label">Exercises</span>
+          <strong>{{ workout.sets|map(attribute='exercise_name')|unique|list|length }}</strong>
+        </div>
+        <div class="number-band">
+          <span class="metric-label">Sets</span>
+          <strong>{{ workout.sets|length }}</strong>
+        </div>
+      </div>
+      {% if workout.notes %}
+        <section class="card">
+          <div class="section-header">
+            <h2>Notes</h2>
+          </div>
+          <p>{{ workout.notes }}</p>
+        </section>
+      {% endif %}
+      {% if workout.linked_external_metrics %}
+        <section class="card">
+          <div class="section-header">
+            <h2>Linked External Metrics</h2>
+          </div>
+          <div class="pill-row">
+            <span class="pill">{{ workout.linked_external_metrics.activity_type|replace('_', ' ')|title }}</span>
+            {% if workout.linked_external_metrics.distance_meters is not none %}
+              <span class="pill">{{ workout.linked_external_metrics.distance_meters }} m</span>
+            {% endif %}
+            {% if workout.linked_external_metrics.duration_seconds is not none %}
+              <span class="pill">{{ workout.linked_external_metrics.duration_seconds }} sec</span>
+            {% endif %}
+            {% if workout.linked_external_metrics.avg_heart_rate is not none %}
+              <span class="pill">Avg HR: {{ workout.linked_external_metrics.avg_heart_rate }}</span>
+            {% endif %}
+            {% if workout.linked_external_metrics.max_heart_rate is not none %}
+              <span class="pill">Max HR: {{ workout.linked_external_metrics.max_heart_rate }}</span>
+            {% endif %}
+            {% if workout.linked_external_metrics.pace_seconds_per_km is not none %}
+              <span class="pill">Pace: {{ workout.linked_external_metrics.pace_seconds_per_km }}</span>
+            {% endif %}
+            {% if workout.linked_external_metrics.calories_per_minute is not none %}
+              <span class="pill">Cal/min: {{ workout.linked_external_metrics.calories_per_minute }}</span>
+            {% endif %}
+          </div>
+        </section>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <div class="section-header">
+        <h2>Exercise Log</h2>
+        <a class="button soft-button" href="/history">Back to history</a>
+      </div>
+      {% if workout.sets %}
+        <div class="history-set-list">
+          {% for item in workout.sets %}
+            <article class="set-row">
+              <strong>{{ item.sequence_index + 1 }}. {{ item.exercise_name }}</strong>
+              <span class="muted">
+                {% if item.weight_kg is not none %}
+                  {{ item.weight_kg }} kg
+                {% else %}
+                  Bodyweight
+                {% endif %}
+                {% if item.reps is not none %}
+                  · {{ item.reps }} reps
+                {% endif %}
+                {% if item.duration_seconds is not none %}
+                  · {{ item.duration_seconds }} sec
+                {% endif %}
+                · {{ item.set_type }}
+              </span>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="page-copy">No sets were recorded for this workout.</p>
+      {% endif %}
+    </section>
+  </section>
+{% endblock %}

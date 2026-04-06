@@ -9,6 +9,7 @@ from .dashboard_service import get_dashboard_payload
 from .db import get_db
 from .external_sync import list_accepted_runs, list_pending_imports, maybe_sync_garmin_activities
 from .finalize_service import finalize_workout
+from .history_service import get_history_payload
 from .analytics_service import get_analytics_payload
 from .garmin_adapter import get_garmin_connection_status
 from .plate_loading import calculate_plate_loading
@@ -102,6 +103,11 @@ def get_accepted_runs():
 @workouts_bp.get("/api/analytics")
 def get_analytics():
     return jsonify(get_analytics_payload(get_db()))
+
+
+@workouts_bp.get("/api/history")
+def get_history():
+    return jsonify(get_history_payload(get_db()))
 
 
 @workouts_bp.post("/api/external/pending-imports/<external_activity_id>/dismiss")

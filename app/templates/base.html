@@ -30,6 +30,7 @@
       <nav class="bottom-nav" aria-label="Primary">
         <a href="/" class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
         <a href="{% if request.path.startswith('/workouts/') %}{{ request.path }}{% else %}#{% endif %}" class="{% if request.path.startswith('/workouts/') %}active{% endif %}">Workout</a>
+        <a href="/history" class="{% if request.path.startswith('/history') %}active{% endif %}">History</a>
         <a href="/analytics" class="{% if request.path == '/analytics' %}active{% endif %}">Analytics</a>
         <a href="/admin" class="{% if request.path == '/admin' %}active{% endif %}">Admin</a>
       </nav>
