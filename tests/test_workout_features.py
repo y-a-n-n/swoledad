@@ -199,3 +199,7 @@ def test_update_reflection_and_linked_metrics_for_imported_run(client, app):
     assert payload["linked_external_metrics"]["max_heart_rate"] == 170
     assert payload["linked_external_metrics"]["pace_seconds_per_km"] == 360.0
     assert payload["linked_external_metrics"]["calories_per_minute"] == 14.0
+
+    accepted_runs = client.get("/api/external/accepted-runs")
+    assert accepted_runs.status_code == 200
+    assert accepted_runs.get_json()["items"] == []

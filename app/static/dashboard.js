@@ -349,20 +349,34 @@ async function hydrateDashboard() {
 }
 
 async function triggerExternalSync() {
-  const response = await fetch("/api/external/sync", { method: "POST" });
-  if (!response.ok) {
-    return;
-  }
-  const payload = await response.json();
+  const syncButton = document.getElementById("sync-now");
   const syncStatus = document.getElementById("sync-status-placeholder");
-  if (syncStatus) {
-    syncStatus.textContent = payload.status_label || payload.last_status || "Garmin idle";
+  const originalLabel = syncButton?.textContent || "Sync now";
+  if (syncButton) {
+    syncButton.disabled = true;
+    syncButton.classList.add("is-loading");
+    syncButton.textContent = "Syncing";
   }
-  const imports = document.getElementById("pending-imports-placeholder");
-  if (imports && payload.changed_pending_imports.length > 0) {
-    imports.innerHTML = payload.changed_pending_imports
-      .map((item) => `<p>Pending import ${item.provider_activity_id}: ${item.status}</p>`)
-      .join("");
+  try {
+    const response = await fetch("/api/external/sync", { method: "POST" });
+    if (!response.ok) {
+      if (syncStatus) {
+        syncStatus.textContent = "Sync failed.";
+      }
+      return;
+    }
+    const payload = await response.json();
+    if (syncStatus) {
+      syncStatus.textContent = payload.status_label || payload.last_status || "Garmin idle";
+    }
+    await refreshPendingImports();
+    await refreshAcceptedRuns();
+  } finally {
+    if (syncButton) {
+      syncButton.disabled = false;
+      syncButton.classList.remove("is-loading");
+      syncButton.textContent = originalLabel;
+    }
   }
 }
 
@@ -458,6 +472,7 @@ async function saveAcceptedRunReflection(form) {
   if (statusNode) {
     statusNode.textContent = `Saved. Workout type: ${titleCaseWords(payload.type)}`;
   }
+  await refreshAcceptedRuns();
 }
 
 function nowIso() {

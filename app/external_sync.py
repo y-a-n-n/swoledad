@@ -237,6 +237,8 @@ def list_accepted_runs(connection: sqlite3.Connection) -> list[dict[str, Any]]:
           ON e.linked_workout_id = w.id
         WHERE e.status = 'linked'
           AND e.activity_type = 'running'
+          AND w.feeling_score IS NULL
+          AND (w.notes IS NULL OR trim(w.notes) = '')
         ORDER BY w.started_at DESC
         """
     ).fetchall()

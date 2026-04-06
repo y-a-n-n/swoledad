@@ -127,6 +127,25 @@ a.soft-button:hover {
   color: var(--primary);
 }
 
+button.is-loading,
+.button.is-loading,
+a.is-loading {
+  cursor: wait;
+  opacity: 0.88;
+}
+
+button.is-loading::after,
+.button.is-loading::after,
+a.is-loading::after {
+  content: "";
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: button-spin 700ms linear infinite;
+}
+
 .page-shell {
   position: relative;
   z-index: 1;
@@ -532,6 +551,16 @@ textarea {
   color: var(--primary);
 }
 
+.admin-number-input {
+  min-height: 4rem;
+  padding: 0.85rem 0;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -746,6 +775,12 @@ pre {
   overflow-x: auto;
   background: var(--surface-container-high);
   color: var(--primary);
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .bottom-nav {
