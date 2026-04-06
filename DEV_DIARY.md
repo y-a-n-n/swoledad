@@ -12,7 +12,8 @@ Core architectural choices:
 - SQLite as the only server datastore
 - IndexedDB in the browser for local drafts, op queue, cached config, timer state
 - canonical server writes through explicit operations / APIs
-- imported cardio and Garmin sync treated as external activities that can be reviewed, accepted, linked, or dismissed
+- Garmin sync treated as external activities that can be reviewed, accepted, linked, or dismissed
+- accepted Garmin runs materialized as first-class `run` workouts rather than a generic imported-cardio bucket
 
 The main app lives in [app](/home/yann/workout/app). Tests live in [tests](/home/yann/workout/tests).
 
@@ -72,21 +73,34 @@ Those are fixed in the current working tree.
 
 ## Frontend Direction
 
-The app originally looked plain and utilitarian. A later uncommitted frontend redesign moved it toward an editorial / training-journal aesthetic:
+The app no longer uses the earlier paper/ink concept. The current direction is the KINETIC / functional-brutalist system captured in `design/*_simplified` and `design/kinetic_mono/DESIGN.md`.
 
-- oversized serif headings
-- paper/ink palette with orange + cobalt accents
-- stronger hero treatment on dashboard
-- more deliberate card styling and layout asymmetry
-- better mobile responsiveness
+Current traits:
 
-The dashboard is the strongest page. The workout/admin pages improved, but still have some roughness.
+- massive `Space Grotesk` metric-first typography
+- black / white / green palette with very flat surfaces
+- simplified, single-task page hierarchy
+- fewer simultaneous controls on primary screens
+- fixed top bar + bottom navigation shell shared across the app
+
+Implementation notes:
+
+- the visual system now lives in [app/static/app.css](/home/yann/workout/app/static/app.css)
+- pages were restructured to fit the new hierarchy, but existing route and JS hooks were deliberately preserved
+- the dashboard and workout pages are intentionally more asymmetric and action-led than before
 
 Known frontend caveats:
 
-- some copy cleanup happened ad hoc while iterating live on the phone
-- Garmin onboarding card has been improved, but mobile shell-command/path rendering is still not perfect
-- a few labels still come from snake_case data and need manual prettifying in templates/JS
+- the workout page still carries a lot of legacy capability, so the “radically simplified” design is achieved by progressive disclosure rather than true feature removal
+- analytics currently uses a deliberately minimal chart treatment; it is readable, but still closer to a stylized placeholder than a mature data viz system
+- some generated labels and timestamps are still raw server values and could use more human formatting later
+
+### What was trickiest
+
+- the design mockups imply simpler product flows than the app actually has
+- keeping the new hierarchy without breaking existing JS required preserving IDs and behavior contracts while moving the DOM around substantially
+- workout logging was the hardest screen because the design wants one active task, while the existing product also needs editing, timer controls, prefill, and plate-loading helpers
+- admin needed the same shell and design language, but not the same level of simplification, so it had to visually match without hiding operational detail
 
 ## Garmin Sync: Full Story
 
@@ -212,14 +226,14 @@ Edge cases that mattered:
 - set-row editing has to work from local draft state, not only the server payload
 - offline/local flows should still navigate even if flush fails
 
-## Imported Cardio Rules
+## Run Import Rules
 
 Manual start should only allow:
 
 - `strength`
 - `cross_training`
 
-`imported_cardio` is for Garmin/imported activity only.
+`run` is for accepted Garmin running imports only.
 
 This restriction now exists in:
 
@@ -228,7 +242,36 @@ This restriction now exists in:
 - dashboard start UI
 - dashboard active draft filtering
 
-There was also a defensive fix so legacy bad `imported_cardio` draft rows do not reappear in the dashboard resume card.
+### Current accepted-run behavior
+
+When a pending Garmin run is accepted:
+
+- the app creates a finalized workout of type `run`
+- the linked external activity remains the source of truth for run metrics
+- the dashboard surfaces accepted runs in their own list
+- each accepted run exposes:
+  - distance
+  - duration
+  - avg heart rate
+  - max heart rate
+  - pace
+  - calories
+  - calories per minute
+- the linked workout carries editable reflection fields:
+  - `feeling_score`
+  - `notes`
+
+### What was unexpected
+
+- the original system treated imported cardio as an anonymous bucket and basically ended the story at “accept/link”
+- once the user wanted runs to stay visible and editable, the model wanted a real workout type instead of a generic import type
+- that in turn touched more of the system than expected:
+  - validation
+  - reconciliation compatibility rules
+  - dashboard filtering
+  - schema
+  - tests
+- we explicitly chose to assume a blank database and not carry legacy migration logic, because there is no meaningful real data yet
 
 ## Testing Notes
 
@@ -236,7 +279,7 @@ The test suite is broad and valuable. Use it.
 
 Current regression count at latest run in this working tree:
 
-- `59 passed`
+- `66 passed`
 
 Important testing lessons:
 

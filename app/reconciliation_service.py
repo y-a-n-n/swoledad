@@ -11,12 +11,12 @@ from .time_utils import utc_now
 AUTO_LINK_WINDOW_MINUTES = 15
 
 COMPATIBLE_WORKOUT_TYPES = {
-    "running": {"imported_cardio", "cross_training"},
+    "running": {"run", "cross_training"},
     "cycling": {"cross_training"},
     "strength": {"strength"},
 }
 
-ACCEPTABLE_OVERRIDE_TYPES = {"imported_cardio", "cross_training"}
+ACCEPTABLE_OVERRIDE_TYPES = {"run", "cross_training"}
 
 
 def reconcile_external_activity(
@@ -40,7 +40,7 @@ def reconcile_external_activity(
 
 def find_candidate_workouts(connection: sqlite3.Connection, external_activity_id: str) -> list[dict[str, Any]]:
     activity = _load_external_activity(connection, external_activity_id)
-    allowed_types = COMPATIBLE_WORKOUT_TYPES.get(activity["activity_type"], {"imported_cardio"})
+    allowed_types = COMPATIBLE_WORKOUT_TYPES.get(activity["activity_type"], {"run"})
     started_at = _parse_iso(activity["started_at"])
     window_start = _to_iso(started_at - timedelta(minutes=AUTO_LINK_WINDOW_MINUTES))
     window_end = _to_iso(started_at + timedelta(minutes=AUTO_LINK_WINDOW_MINUTES))
@@ -161,9 +161,9 @@ def _determine_accept_workout_type(activity_type: str, type_override: str | None
     if activity_type == "strength":
         raise ValueError("strength imports must link to an existing workout")
     if type_override is None:
-        return "imported_cardio"
+        return "run"
     if type_override not in ACCEPTABLE_OVERRIDE_TYPES:
-        raise ValueError("type_override must be imported_cardio or cross_training")
+        raise ValueError("type_override must be run or cross_training")
     if type_override not in COMPATIBLE_WORKOUT_TYPES.get(activity_type, set()):
         raise ValueError("type_override is incompatible with this activity")
     return type_override

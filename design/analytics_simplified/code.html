@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&amp;family=Space+Grotesk:wght@300;400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#131313",
+                    "inverse-primary": "#006e16",
+                    "on-tertiary-fixed": "#ffffff",
+                    "outline": "#919191",
+                    "on-background": "#e2e2e2",
+                    "on-tertiary": "#002203",
+                    "surface-container-highest": "#353535",
+                    "inverse-on-surface": "#303030",
+                    "on-secondary-fixed": "#1a1c1c",
+                    "surface-tint": "#00e639",
+                    "surface-bright": "#393939",
+                    "surface-container": "#1f1f1f",
+                    "secondary": "#c6c6c7",
+                    "primary-container": "#00f63e",
+                    "tertiary-fixed-dim": "#00530e",
+                    "on-tertiary-container": "#000000",
+                    "surface-dim": "#131313",
+                    "error-container": "#93000a",
+                    "on-tertiary-fixed-variant": "#72ff70",
+                    "background": "#131313",
+                    "outline-variant": "#474747",
+                    "tertiary-fixed": "#006e16",
+                    "error": "#ffb4ab",
+                    "primary-fixed": "#006e16",
+                    "on-surface": "#e2e2e2",
+                    "on-primary": "#002203",
+                    "on-surface-variant": "#c6c6c6",
+                    "on-secondary": "#1a1c1c",
+                    "inverse-surface": "#e2e2e2",
+                    "surface-container-high": "#2a2a2a",
+                    "primary-fixed-dim": "#00530e",
+                    "primary": "#ffffff",
+                    "on-secondary-fixed-variant": "#3a3c3c",
+                    "tertiary": "#72ff70",
+                    "on-primary-fixed": "#ffffff",
+                    "secondary-container": "#454747",
+                    "surface-container-lowest": "#0e0e0e",
+                    "secondary-fixed": "#c6c6c7",
+                    "on-primary-container": "#000000",
+                    "on-error-container": "#ffdad6",
+                    "surface-container-low": "#1b1b1b",
+                    "on-primary-fixed-variant": "#72ff70",
+                    "surface-variant": "#353535",
+                    "on-error": "#690005",
+                    "secondary-fixed-dim": "#aaabab",
+                    "on-secondary-container": "#e2e2e2",
+                    "tertiary-container": "#00a827"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Space Grotesk"],
+                    "body": ["Inter"],
+                    "label": ["Space Grotesk"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .brutalist-chart {
+            clip-path: polygon(0% 90%, 10% 85%, 20% 88%, 30% 70%, 40% 75%, 50% 50%, 60% 55%, 70% 30%, 80% 35%, 90% 10%, 100% 15%, 100% 100%, 0% 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-primary font-body antialiased">
+<!-- TopAppBar -->
+<header class="bg-[#131313] text-[#FFFFFF] fixed top-0 w-full z-50 border-b border-[#2A2A2A] h-16 flex justify-between items-center px-6">
+<div class="flex items-center gap-4">
+<button class="hover:bg-[#1B1B1B] transition-colors duration-100 active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-['Space_Grotesk'] font-bold uppercase tracking-tighter text-2xl font-black text-[#FFFFFF] tracking-[0.2em]">KINETIC</h1>
+</div>
+<div class="flex items-center">
+<button class="hover:bg-[#1B1B1B] transition-colors duration-100 active:scale-95 transition-transform p-2">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<main class="pt-24 pb-32 px-6 max-w-5xl mx-auto">
+<!-- BIG 3 METRICS -->
+<section class="space-y-12 mb-20">
+<div class="group">
+<span class="font-label text-tertiary text-xl font-bold tracking-widest block mb-2">SQUAT</span>
+<div class="flex items-baseline gap-4 border-b-4 border-surface-container-high pb-4">
+<span class="font-headline text-[10rem] leading-none font-black tracking-tighter">185</span>
+<span class="font-label text-4xl font-bold text-surface-container-highest">KG</span>
+</div>
+</div>
+<div class="group">
+<span class="font-label text-tertiary text-xl font-bold tracking-widest block mb-2">BENCH</span>
+<div class="flex items-baseline gap-4 border-b-4 border-surface-container-high pb-4">
+<span class="font-headline text-[10rem] leading-none font-black tracking-tighter">120</span>
+<span class="font-label text-4xl font-bold text-surface-container-highest">KG</span>
+</div>
+</div>
+<div class="group">
+<span class="font-label text-tertiary text-xl font-bold tracking-widest block mb-2">DEADLIFT</span>
+<div class="flex items-baseline gap-4 border-b-4 border-surface-container-high pb-4">
+<span class="font-headline text-[10rem] leading-none font-black tracking-tighter">210</span>
+<span class="font-label text-4xl font-bold text-surface-container-highest">KG</span>
+</div>
+</div>
+</section>
+<!-- TOTAL VOLUME TREND CHART -->
+<section class="mt-32">
+<div class="w-full bg-surface-container-low h-[400px] relative overflow-hidden flex items-end">
+<!-- Data Visualization: No labels, No axes. Just the line path represented by a shape -->
+<div class="absolute inset-0 flex items-end">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 1000 400">
+<path d="M0,350 L100,320 L200,340 L300,280 L400,300 L500,200 L600,220 L700,100 L800,120 L900,40 L1000,60" fill="none" stroke="white" stroke-linejoin="miter" stroke-width="8"></path>
+</svg>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full bg-[#131313] flex justify-around items-center h-20 px-4 pb-safe border-t border-[#2A2A2A] z-50">
+<a class="flex flex-col items-center justify-center text-[#FFFFFF] opacity-50 py-2 hover:opacity-100 transition-opacity duration-100 active:translate-y-[-2px] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+<span class="font-['Space_Grotesk'] text-[10px] font-bold uppercase tracking-widest mt-1">DASHBOARD</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#FFFFFF] opacity-50 py-2 hover:opacity-100 transition-opacity duration-100 active:translate-y-[-2px] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="fitness_center">fitness_center</span>
+<span class="font-['Space_Grotesk'] text-[10px] font-bold uppercase tracking-widest mt-1">WORKOUT</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#72FF70] py-2 hover:opacity-100 transition-opacity duration-100 active:translate-y-[-2px] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-['Space_Grotesk'] text-[10px] font-bold uppercase tracking-widest mt-1">ANALYTICS</span>
+</a>
+</nav>
+</body></html>

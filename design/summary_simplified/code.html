@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Workout Summary | KINETIC</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#131313",
+                    "inverse-primary": "#006e16",
+                    "on-tertiary-fixed": "#ffffff",
+                    "outline": "#919191",
+                    "on-background": "#e2e2e2",
+                    "on-tertiary": "#002203",
+                    "surface-container-highest": "#353535",
+                    "inverse-on-surface": "#303030",
+                    "on-secondary-fixed": "#1a1c1c",
+                    "surface-tint": "#00e639",
+                    "surface-bright": "#393939",
+                    "surface-container": "#1f1f1f",
+                    "secondary": "#c6c6c7",
+                    "primary-container": "#00f63e",
+                    "tertiary-fixed-dim": "#00530e",
+                    "on-tertiary-container": "#000000",
+                    "surface-dim": "#131313",
+                    "error-container": "#93000a",
+                    "on-tertiary-fixed-variant": "#72ff70",
+                    "background": "#131313",
+                    "outline-variant": "#474747",
+                    "tertiary-fixed": "#006e16",
+                    "error": "#ffb4ab",
+                    "primary-fixed": "#006e16",
+                    "on-surface": "#e2e2e2",
+                    "on-primary": "#002203",
+                    "on-surface-variant": "#c6c6c6",
+                    "on-secondary": "#1a1c1c",
+                    "inverse-surface": "#e2e2e2",
+                    "surface-container-high": "#2a2a2a",
+                    "primary-fixed-dim": "#00530e",
+                    "primary": "#ffffff",
+                    "on-secondary-fixed-variant": "#3a3c3c",
+                    "tertiary": "#72ff70",
+                    "on-primary-fixed": "#ffffff",
+                    "secondary-container": "#454747",
+                    "surface-container-lowest": "#0e0e0e",
+                    "secondary-fixed": "#c6c6c7",
+                    "on-primary-container": "#000000",
+                    "on-error-container": "#ffdad6",
+                    "surface-container-low": "#1b1b1b",
+                    "on-primary-fixed-variant": "#72ff70",
+                    "surface-variant": "#353535",
+                    "on-error": "#690005",
+                    "secondary-fixed-dim": "#aaabab",
+                    "on-secondary-container": "#e2e2e2",
+                    "tertiary-container": "#00a827"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Space Grotesk"],
+                    "body": ["Inter"],
+                    "label": ["Space Grotesk"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #131313;
+            color: #FFFFFF;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        .brutalist-grid {
+            background-image: linear-gradient(#1b1b1b 1px, transparent 1px), linear-gradient(90deg, #1b1b1b 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-primary selection:bg-tertiary selection:text-on-tertiary">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#131313] text-[#FFFFFF] border-b border-[#2A2A2A] flex justify-between items-center px-6 h-16 w-full">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#FFFFFF] hover:bg-[#1B1B1B] transition-colors duration-100 p-2 cursor-pointer active:scale-95 transition-transform">menu</span>
+<h1 class="font-['Space_Grotesk'] font-bold uppercase tracking-tighter text-2xl font-black text-[#FFFFFF] tracking-[0.2em]">KINETIC</h1>
+</div>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-[#FFFFFF] hover:bg-[#1B1B1B] transition-colors duration-100 p-2 cursor-pointer active:scale-95 transition-transform">settings</span>
+</div>
+</header>
+<main class="min-h-screen pt-24 pb-32 px-6 flex flex-col justify-between brutalist-grid">
+<!-- Header Section -->
+<section class="mb-12">
+<h2 class="font-headline text-2xl font-black uppercase tracking-widest text-primary leading-none border-l-4 border-tertiary pl-4">
+                SESSION SUMMARY
+            </h2>
+</section>
+<!-- Metrics Canvas -->
+<section class="flex-grow flex flex-col justify-center space-y-16">
+<!-- Metric Block: Mass -->
+<div class="flex flex-col items-start">
+<span class="font-headline text-[15vw] md:text-[10rem] font-black leading-[0.8] tracking-tighter text-primary">
+                    5,400<span class="text-tertiary">KG</span>
+</span>
+<span class="font-label text-sm md:text-xl font-bold uppercase tracking-[0.4em] text-outline mt-2">MOVED</span>
+</div>
+<!-- Metric Block: Duration -->
+<div class="flex flex-col items-start">
+<span class="font-headline text-[12vw] md:text-[8rem] font-black leading-[0.8] tracking-tighter text-primary tabular-nums">
+                    01:14:22
+                </span>
+<span class="font-label text-sm md:text-xl font-bold uppercase tracking-[0.4em] text-outline mt-2">DURATION</span>
+</div>
+<!-- Metric Block: Energy -->
+<div class="flex flex-col items-start">
+<span class="font-headline text-[15vw] md:text-[10rem] font-black leading-[0.8] tracking-tighter text-tertiary">
+                    842
+                </span>
+<span class="font-label text-sm md:text-xl font-bold uppercase tracking-[0.4em] text-outline mt-2">CALORIES</span>
+</div>
+</section>
+<!-- Single Screen-Width Action -->
+<footer class="fixed bottom-0 left-0 w-full p-0 z-50">
+<button class="w-full bg-[#72FF70] text-[#002203] font-headline font-black text-4xl py-10 uppercase tracking-[0.2em] hover:bg-white transition-colors duration-150 active:scale-[0.99] transition-transform">
+                FINISH
+            </button>
+</footer>
+</main>
+<!-- Structural Element: Full Bleed Metric Strip (The Growth Indicator) -->
+<div class="fixed top-16 left-0 w-full h-1 bg-surface-container-high overflow-hidden z-40">
+<div class="h-full bg-tertiary-container w-[100%]"></div>
+</div>
+<!-- Hidden Background Asset for Atmosphere -->
+<div class="fixed inset-0 pointer-events-none opacity-[0.03] z-[-1]">
+<img class="w-full h-full object-cover grayscale" data-alt="dramatic wide angle shot of a gritty high-performance gym interior with harsh overhead lighting and concrete textures" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjonjDPuVvIekYMV5TZO_davX3D9D_8AOJOCBWnMsCH65d7e_yBsrRlARwraPCw4zqwf-r22oMPun4aj1iYhYVKXBaflEayJL8JTSmEzDthpljmDkxBknq6rmQGtWVkVwvW1yHH28fSxItYD_FZMFjR-18BpL9kCTaDo2270kLHTPaCGel8pUaAIl3uUpMd38ybTsM8eEckRjJPcLNUHa3O_LKpZixzP_MBYh7al4HArQCE88g8L9ZkxSwZ-Xl1kXKWTQSV6U8NXTN"/>
+</div>
+</body></html>

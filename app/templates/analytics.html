@@ -1,73 +1,109 @@
 {% extends "base.html" %}
-{% block title %}Analytics | Workout Companion{% endblock %}
+{% block title %}Analytics | Kinetic{% endblock %}
+{% block topbar_meta %}History + Trends{% endblock %}
 {% block content %}
   <section class="page-header">
     <p class="eyebrow">History + Trends</p>
     <h1>Analytics</h1>
   </section>
 
-  <div class="grid two-up">
-    <section class="card">
-      <div class="section-header">
-        <div>
-          <h2>Big 3 Estimated 1RM</h2>
-        </div>
-      </div>
+  <section class="analytics-stack">
+    <section class="analytics-big3">
       {% for lift, items in analytics.big3_estimated_1rm_trend.items() %}
-        <h3>{{ lift|replace('_', ' ')|title }}</h3>
-        {% if items %}
-          <div class="analytics-list">
-            {% for item in items %}
-              <div class="analytics-row">
-                <span>{{ item.started_at }}</span>
-                <span>{{ item.estimated_1rm }} kg</span>
-              </div>
-            {% endfor %}
+        <article class="analytics-metric">
+          <span class="analytics-label">{{ lift|replace('_', ' ')|title }}</span>
+          <div class="analytics-value">
+            {% if items %}
+              {{ (items|last).estimated_1rm }}
+            {% else %}
+              0
+            {% endif %}
           </div>
-        {% else %}
-          <p>No data yet.</p>
-        {% endif %}
+        </article>
       {% endfor %}
     </section>
 
-    <section class="card">
+    <section class="chart-panel">
       <div class="section-header">
-        <div>
-          <h2>Cardio Personal Bests</h2>
-        </div>
+        <h2>Total Volume Trend</h2>
+        <p class="muted">Big 3 estimated 1RM progression, simplified.</p>
       </div>
-      {% if analytics.cardio_personal_bests %}
-        <div class="analytics-list">
-          {% for item in analytics.cardio_personal_bests %}
-            <div class="analytics-row">
-              <span>{{ item.activity_type|replace('_', ' ')|title }}</span>
-              <span>{{ item.distance_meters }} m</span>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p>No cardio data yet.</p>
-      {% endif %}
+      <svg viewBox="0 0 1000 320" preserveAspectRatio="none" aria-label="Trend chart">
+        {% set squat_points = analytics.big3_estimated_1rm_trend.squat %}
+        {% if squat_points %}
+          {% set count = squat_points|length %}
+          <polyline
+            fill="none"
+            stroke="#ffffff"
+            stroke-width="8"
+            points="{% for item in squat_points %}{{ (loop.index0 * (1000 / ((count - 1) if count > 1 else 1)))|round(0, 'floor') }},{{ (280 - (item.estimated_1rm / 160 * 220))|round(0, 'floor') }} {% endfor %}" />
+        {% else %}
+          <line x1="0" y1="220" x2="1000" y2="220" stroke="#ffffff" stroke-width="8" />
+        {% endif %}
+      </svg>
     </section>
 
-    <section class="card">
-      <div class="section-header">
-        <div>
-          <h2>Calories Per Minute</h2>
+    <section class="grid two-up">
+      <section class="card">
+        <div class="section-header">
+          <h2>Big 3 Timeline</h2>
         </div>
-      </div>
-      {% if analytics.calories_per_minute_trend %}
-        <div class="analytics-list">
-          {% for item in analytics.calories_per_minute_trend %}
-            <div class="analytics-row">
-              <span>{{ item.started_at }}</span>
-              <span>{{ item.calories_per_minute }} cal/min</span>
+        {% for lift, items in analytics.big3_estimated_1rm_trend.items() %}
+          <div class="section-stack" style="margin-bottom: 1.5rem;">
+            <span class="analytics-label">{{ lift|replace('_', ' ')|title }}</span>
+            {% if items %}
+              <div class="analytics-list">
+                {% for item in items %}
+                  <div class="analytics-row">
+                    <span>{{ item.started_at }}</span>
+                    <span>{{ item.estimated_1rm }} kg</span>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <p class="page-copy">No data yet.</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </section>
+
+      <section class="section-stack">
+        <section class="card">
+          <div class="section-header">
+            <h2>Cardio Personal Bests</h2>
+          </div>
+          {% if analytics.cardio_personal_bests %}
+            <div class="analytics-list">
+              {% for item in analytics.cardio_personal_bests %}
+                <div class="analytics-row">
+                  <span>{{ item.activity_type|replace('_', ' ')|title }}</span>
+                  <span>{{ item.distance_meters }} m</span>
+                </div>
+              {% endfor %}
             </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p>No calorie data yet.</p>
-      {% endif %}
+          {% else %}
+            <p class="page-copy">No cardio data yet.</p>
+          {% endif %}
+        </section>
+
+        <section class="card">
+          <div class="section-header">
+            <h2>Calories Per Minute</h2>
+          </div>
+          {% if analytics.calories_per_minute_trend %}
+            <div class="analytics-list">
+              {% for item in analytics.calories_per_minute_trend %}
+                <div class="analytics-row">
+                  <span>{{ item.started_at }}</span>
+                  <span>{{ item.calories_per_minute }} cal/min</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="page-copy">No calorie data yet.</p>
+          {% endif %}
+        </section>
+      </section>
     </section>
-  </div>
+  </section>
 {% endblock %}

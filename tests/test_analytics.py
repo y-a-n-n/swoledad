@@ -15,7 +15,7 @@ def seed_analytics_data(app):
               ('w2', 'strength', 'finalized', '2026-03-17T10:00:00Z', '2026-03-17T11:00:00Z', 4, NULL, 'manual', '2026-03-17T10:00:00Z', '2026-03-17T11:00:00Z'),
               ('w3', 'strength', 'draft', '2026-03-20T10:00:00Z', NULL, NULL, NULL, 'manual', '2026-03-20T10:00:00Z', '2026-03-20T10:00:00Z'),
               ('w4', 'cross_training', 'finalized', '2026-03-11T08:00:00Z', '2026-03-11T08:30:00Z', 4, NULL, 'manual', '2026-03-11T08:00:00Z', '2026-03-11T08:30:00Z'),
-              ('w5', 'imported_cardio', 'finalized', '2026-03-18T08:00:00Z', '2026-03-18T08:45:00Z', NULL, NULL, 'external_import', '2026-03-18T08:00:00Z', '2026-03-18T08:45:00Z'),
+              ('w5', 'run', 'finalized', '2026-03-18T08:00:00Z', '2026-03-18T08:45:00Z', NULL, NULL, 'external_import', '2026-03-18T08:00:00Z', '2026-03-18T08:45:00Z'),
               ('w6', 'cross_training', 'finalized', '2026-03-19T08:00:00Z', '2026-03-19T08:40:00Z', 4, NULL, 'manual', '2026-03-19T08:00:00Z', '2026-03-19T08:40:00Z');
 
             INSERT INTO workout_sets (id, workout_id, exercise_name, sequence_index, weight_kg, reps, duration_seconds, set_type, created_at, updated_at) VALUES

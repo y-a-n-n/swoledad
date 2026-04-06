@@ -4,7 +4,7 @@ import sqlite3
 from typing import Any
 
 from .analytics_service import get_dashboard_weekly_stats
-from .external_sync import get_sync_status, list_pending_imports
+from .external_sync import get_sync_status, list_accepted_runs, list_pending_imports
 from .garmin_adapter import get_garmin_connection_status
 
 
@@ -35,6 +35,7 @@ def get_dashboard_payload(connection: sqlite3.Connection, app_config: dict[str, 
             else None
         ),
         "pending_imports": list_pending_imports(connection),
+        "accepted_runs": list_accepted_runs(connection),
         "weekly_stats": get_dashboard_weekly_stats(connection),
         "sync_status": get_garmin_connection_status(app_config or {}, checkpoint),
     }

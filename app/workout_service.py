@@ -78,7 +78,16 @@ def get_workout_payload(connection: sqlite3.Connection, workout_id: str) -> dict
         raise LookupError("workout not found")
     external = connection.execute(
         """
-        SELECT id, provider, provider_activity_id, activity_type, duration_seconds, distance_meters, calories
+        SELECT
+          id,
+          provider,
+          provider_activity_id,
+          activity_type,
+          duration_seconds,
+          distance_meters,
+          calories,
+          avg_heart_rate,
+          max_heart_rate
         FROM external_activities
         WHERE linked_workout_id = ?
         """,
@@ -105,11 +114,65 @@ def get_workout_payload(connection: sqlite3.Connection, workout_id: str) -> dict
                 "duration_seconds": external["duration_seconds"],
                 "distance_meters": external["distance_meters"],
                 "calories": external["calories"],
+                "avg_heart_rate": external["avg_heart_rate"],
+                "max_heart_rate": external["max_heart_rate"],
+                "pace_seconds_per_km": _calculate_pace_seconds_per_km(
+                    external["distance_meters"], external["duration_seconds"]
+                ),
+                "calories_per_minute": _calculate_calories_per_minute(
+                    external["calories"], external["duration_seconds"]
+                ),
             }
             if external
             else None
         ),
     }
+
+
+def update_workout_reflection(
+    connection: sqlite3.Connection,
+    workout_id: str,
+    *,
+    feeling_score: int | None,
+    notes: str | None,
+) -> dict[str, Any]:
+    validate_uuid(workout_id, "workout_id")
+    workout = connection.execute(
+        "SELECT id FROM workouts WHERE id = ?",
+        (workout_id,),
+    ).fetchone()
+    if workout is None:
+        raise LookupError("workout not found")
+    if feeling_score is not None:
+        feeling_score = int(feeling_score)
+        if feeling_score < 1 or feeling_score > 5:
+            raise ValueError("feeling_score must be between 1 and 5")
+    if notes is not None and not isinstance(notes, str):
+        raise ValueError("notes must be a string or null")
+
+    execute_write(
+        connection,
+        """
+        UPDATE workouts
+        SET feeling_score = ?, notes = ?, updated_at = ?
+        WHERE id = ?
+        """,
+        (feeling_score, notes, utc_now(), workout_id),
+    )
+    connection.commit()
+    return get_workout_payload(connection, workout_id)
+
+
+def _calculate_pace_seconds_per_km(distance_meters: float | None, duration_seconds: int | None) -> float | None:
+    if not distance_meters or not duration_seconds or distance_meters <= 0:
+        return None
+    return round(float(duration_seconds) / (float(distance_meters) / 1000.0), 2)
+
+
+def _calculate_calories_per_minute(calories: int | None, duration_seconds: int | None) -> float | None:
+    if calories is None or not duration_seconds or duration_seconds <= 0:
+        return None
+    return round(float(calories) / (float(duration_seconds) / 60.0), 2)
 
 
 def _require_non_empty(value: Any, field_name: str) -> str:

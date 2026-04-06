@@ -155,3 +155,47 @@ def test_plate_loading_exact_and_nearest_cases():
     assert inexact["exact_match"] is None
     assert inexact["nearest_lower"]["achieved_weight"] == 55.0
     assert inexact["nearest_higher"]["achieved_weight"] == 60.0
+
+
+def test_update_reflection_and_linked_metrics_for_imported_run(client, app):
+    workout_id = "77777777-7777-4777-8777-777777777777"
+    with app.app_context():
+        from app.db import get_db
+
+        db = get_db()
+        db.execute(
+            """
+            INSERT INTO workouts (id, type, status, started_at, ended_at, feeling_score, notes, source, created_at, updated_at)
+            VALUES (?, 'run', 'finalized', '2026-03-20T10:00:00Z', '2026-03-20T10:30:00Z', NULL, NULL, 'external_import', '2026-03-20T10:00:00Z', '2026-03-20T10:30:00Z')
+            """
+            ,
+            (workout_id,),
+        )
+        db.execute(
+            """
+            INSERT INTO external_activities (
+              id, provider, provider_activity_id, activity_type, status, started_at, ended_at, duration_seconds,
+              distance_meters, calories, avg_heart_rate, max_heart_rate, elevation_gain_meters, raw_payload_json,
+              linked_workout_id, dismissed_at, created_at, updated_at
+            ) VALUES (
+              'run-external', 'garmin', 'ga-run', 'running', 'linked', '2026-03-20T10:00:00Z', '2026-03-20T10:30:00Z',
+              1800, 5000, 420, 152, 170, NULL, '{}', ?, NULL, '2026-03-20T10:30:00Z', '2026-03-20T10:30:00Z'
+            )
+            """
+            ,
+            (workout_id,),
+        )
+        db.commit()
+
+    update = client.put(
+        f"/api/workouts/{workout_id}/reflection",
+        json={"feeling_score": 5, "notes": "Strong finish"},
+    )
+    assert update.status_code == 200
+    payload = update.get_json()
+    assert payload["feeling_score"] == 5
+    assert payload["notes"] == "Strong finish"
+    assert payload["linked_external_metrics"]["avg_heart_rate"] == 152
+    assert payload["linked_external_metrics"]["max_heart_rate"] == 170
+    assert payload["linked_external_metrics"]["pace_seconds_per_km"] == 360.0
+    assert payload["linked_external_metrics"]["calories_per_minute"] == 14.0

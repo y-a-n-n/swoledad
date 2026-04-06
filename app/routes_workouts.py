@@ -7,7 +7,7 @@ from flask import Blueprint, current_app, jsonify, request
 from .config_service import get_config
 from .dashboard_service import get_dashboard_payload
 from .db import get_db
-from .external_sync import list_pending_imports, maybe_sync_garmin_activities
+from .external_sync import list_accepted_runs, list_pending_imports, maybe_sync_garmin_activities
 from .finalize_service import finalize_workout
 from .analytics_service import get_analytics_payload
 from .garmin_adapter import get_garmin_connection_status
@@ -20,7 +20,7 @@ from .reconciliation_service import (
 )
 from .set_service import delete_set, upsert_set
 from .suggestions import get_big3_prefill, get_exercise_suggestions
-from .workout_service import create_draft, get_workout_payload
+from .workout_service import create_draft, get_workout_payload, update_workout_reflection
 
 workouts_bp = Blueprint("workouts", __name__)
 
@@ -94,6 +94,11 @@ def get_pending_imports():
     return jsonify({"items": list_pending_imports(get_db())})
 
 
+@workouts_bp.get("/api/external/accepted-runs")
+def get_accepted_runs():
+    return jsonify({"items": list_accepted_runs(get_db())})
+
+
 @workouts_bp.get("/api/analytics")
 def get_analytics():
     return jsonify(get_analytics_payload(get_db()))
@@ -134,6 +139,23 @@ def post_pending_import_link(external_activity_id: str):
     except ValueError as exc:
         return jsonify({"error": str(exc)}), HTTPStatus.BAD_REQUEST
     return jsonify(payload)
+
+
+@workouts_bp.put("/api/workouts/<workout_id>/reflection")
+def put_workout_reflection(workout_id: str):
+    payload = request.get_json(silent=True) or {}
+    try:
+        result = update_workout_reflection(
+            get_db(),
+            workout_id,
+            feeling_score=payload.get("feeling_score"),
+            notes=payload.get("notes"),
+        )
+    except LookupError as exc:
+        return jsonify({"error": str(exc)}), HTTPStatus.NOT_FOUND
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), HTTPStatus.BAD_REQUEST
+    return jsonify(result)
 
 
 @workouts_bp.put("/api/workouts/<workout_id>/sets/<set_id>")

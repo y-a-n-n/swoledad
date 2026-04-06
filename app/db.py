@@ -115,8 +115,6 @@ def _seed_defaults(connection: sqlite3.Connection) -> None:
         """,
         default_inventory,
     )
-
-
 def _to_json(value: Any) -> str:
     import json
 

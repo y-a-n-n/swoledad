@@ -212,6 +212,47 @@ def list_pending_imports(connection: sqlite3.Connection) -> list[dict[str, Any]]
     return items
 
 
+def list_accepted_runs(connection: sqlite3.Connection) -> list[dict[str, Any]]:
+    rows = connection.execute(
+        """
+        SELECT
+          w.id AS workout_id,
+          w.type AS workout_type,
+          w.status AS workout_status,
+          w.started_at,
+          w.ended_at,
+          w.feeling_score,
+          w.notes,
+          e.id AS external_activity_id,
+          e.provider,
+          e.provider_activity_id,
+          e.activity_type,
+          e.duration_seconds,
+          e.distance_meters,
+          e.calories,
+          e.avg_heart_rate,
+          e.max_heart_rate
+        FROM workouts w
+        JOIN external_activities e
+          ON e.linked_workout_id = w.id
+        WHERE e.status = 'linked'
+          AND e.activity_type = 'running'
+        ORDER BY w.started_at DESC
+        """
+    ).fetchall()
+    items = []
+    for row in rows:
+        item = dict(row)
+        item["pace_seconds_per_km"] = _calculate_pace_seconds_per_km(
+            item["distance_meters"], item["duration_seconds"]
+        )
+        item["calories_per_minute"] = _calculate_calories_per_minute(
+            item["calories"], item["duration_seconds"]
+        )
+        items.append(item)
+    return items
+
+
 def get_sync_status(connection: sqlite3.Connection) -> dict[str, Any]:
     row = connection.execute(
         """
@@ -306,3 +347,15 @@ def _parse_iso(value: str) -> datetime:
 
 def _to_iso(value: datetime) -> str:
     return value.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _calculate_pace_seconds_per_km(distance_meters: float | None, duration_seconds: int | None) -> float | None:
+    if not distance_meters or not duration_seconds or distance_meters <= 0:
+        return None
+    return round(float(duration_seconds) / (float(distance_meters) / 1000.0), 2)
+
+
+def _calculate_calories_per_minute(calories: int | None, duration_seconds: int | None) -> float | None:
+    if calories is None or not duration_seconds or duration_seconds <= 0:
+        return None
+    return round(float(calories) / (float(duration_seconds) / 60.0), 2)

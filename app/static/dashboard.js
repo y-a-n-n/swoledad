@@ -274,6 +274,55 @@ function renderPendingImportCard(item) {
   `;
 }
 
+function formatDurationSeconds(value) {
+  if (value == null) {
+    return "n/a";
+  }
+  const totalSeconds = Number(value);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatPace(value) {
+  if (value == null) {
+    return "n/a";
+  }
+  return `${formatDurationSeconds(Math.round(Number(value)))}/km`;
+}
+
+function renderAcceptedRunCard(item) {
+  return `
+    <article class="list-item accepted-run-card" data-workout-id="${item.workout_id}">
+      <strong>${titleCaseWords(item.activity_type)}</strong>
+      <p>${item.started_at}</p>
+      <div class="pill-row">
+        <span class="pill">${item.distance_meters ?? 0} m</span>
+        <span class="pill">${item.duration_seconds ?? 0} sec</span>
+        <span class="pill">Avg HR: ${item.avg_heart_rate ?? "n/a"}</span>
+        <span class="pill">Max HR: ${item.max_heart_rate ?? "n/a"}</span>
+        <span class="pill">Pace: ${formatPace(item.pace_seconds_per_km)}</span>
+        <span class="pill">Calories: ${item.calories ?? "n/a"}</span>
+        <span class="pill">Cal/min: ${item.calories_per_minute ?? "n/a"}</span>
+      </div>
+      <form class="accepted-run-form stack" data-workout-id="${item.workout_id}">
+        <label>
+          Feels
+          <input type="number" name="feeling_score" min="1" max="5" step="1" value="${item.feeling_score ?? ""}">
+        </label>
+        <label>
+          Notes
+          <textarea name="notes" placeholder="How did the run feel?">${item.notes ?? ""}</textarea>
+        </label>
+        <div class="button-row">
+          <button type="submit">Save reflection</button>
+          <span class="muted accepted-run-status">Workout type: ${titleCaseWords(item.workout_type)}</span>
+        </div>
+      </form>
+    </article>
+  `;
+}
+
 async function hydrateDashboard() {
   const drafts = await listLocalDrafts();
   if (drafts.length > 0) {
@@ -296,6 +345,7 @@ async function hydrateDashboard() {
   } catch (_error) {
     // Use stale cached config when offline.
   }
+  await refreshAcceptedRuns();
 }
 
 async function triggerExternalSync() {
@@ -333,6 +383,23 @@ async function refreshPendingImports() {
   imports.innerHTML = payload.items.map((item) => renderPendingImportCard(item)).join("");
 }
 
+async function refreshAcceptedRuns() {
+  const response = await fetch("/api/external/accepted-runs");
+  if (!response.ok) {
+    return;
+  }
+  const payload = await response.json();
+  const runs = document.getElementById("accepted-runs-placeholder");
+  if (!runs) {
+    return;
+  }
+  if (payload.items.length === 0) {
+    runs.innerHTML = "<p>No accepted runs yet.</p>";
+    return;
+  }
+  runs.innerHTML = payload.items.map((item) => renderAcceptedRunCard(item)).join("");
+}
+
 async function handlePendingImportAction(event) {
   const target = event.target.closest("button");
   if (!target) {
@@ -361,6 +428,36 @@ async function handlePendingImportAction(event) {
     return;
   }
   await refreshPendingImports();
+  await refreshAcceptedRuns();
+}
+
+async function saveAcceptedRunReflection(form) {
+  const workoutId = form.dataset.workoutId;
+  if (!workoutId) {
+    return;
+  }
+  const formData = new FormData(form);
+  const feelingScoreValue = formData.get("feeling_score");
+  const notesValue = formData.get("notes");
+  const response = await fetch(`/api/workouts/${workoutId}/reflection`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      feeling_score: feelingScoreValue ? Number(feelingScoreValue) : null,
+      notes: notesValue ? String(notesValue) : null,
+    }),
+  });
+  const statusNode = form.querySelector(".accepted-run-status");
+  if (!response.ok) {
+    if (statusNode) {
+      statusNode.textContent = "Save failed.";
+    }
+    return;
+  }
+  const payload = await response.json();
+  if (statusNode) {
+    statusNode.textContent = `Saved. Workout type: ${titleCaseWords(payload.type)}`;
+  }
 }
 
 function nowIso() {
@@ -438,6 +535,14 @@ document.getElementById("sync-now")?.addEventListener("click", () => {
 });
 document.getElementById("pending-imports-placeholder")?.addEventListener("click", (event) => {
   void handlePendingImportAction(event);
+});
+document.getElementById("accepted-runs-placeholder")?.addEventListener("submit", (event) => {
+  const form = event.target.closest(".accepted-run-form");
+  if (!form) {
+    return;
+  }
+  event.preventDefault();
+  void saveAcceptedRunReflection(form);
 });
 window.addEventListener("online", () => {
   void hydrateDashboard();

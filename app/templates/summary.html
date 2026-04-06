@@ -1,13 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Finalize Workout | Workout Companion{% endblock %}
+{% block title %}Finalize Workout | Kinetic{% endblock %}
+{% block body_class %}has-bottom-action no-bottom-nav{% endblock %}
+{% block topbar_meta %}Session Summary{% endblock %}
+{% block bottom_nav %}
+  <footer class="bottom-action">
+    <button type="submit" form="finalize-form">Finish</button>
+  </footer>
+{% endblock %}
 {% block content %}
-  <section class="page-header">
-    <p class="eyebrow">Session Wrap-up</p>
-    <h1>Finalize Workout</h1>
-  </section>
+  <section class="summary-grid">
+    <section class="summary-hero">
+      <p class="eyebrow">Session Wrap-up</p>
+      <div>
+        <span class="summary-label">Sets Logged</span>
+        <div class="summary-hero-value">{{ server_workout.sets|length if server_workout else 0 }}</div>
+      </div>
+      <div>
+        <span class="summary-label">Workout Type</span>
+        <div class="summary-hero-value" style="font-size: clamp(2.5rem, 9vw, 5rem);">{{ server_workout.type|replace('_', ' ')|title if server_workout else "Strength" }}</div>
+      </div>
+      <div class="number-band">
+        <span class="metric-label">Finalize state</span>
+        <strong id="finalize-status">Draft not finalized yet.</strong>
+        <span class="muted">Once finalized, the workout becomes part of history, suggestions, and analytics.</span>
+      </div>
+    </section>
 
-  <div class="hero-grid" style="grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr);">
-    <section class="card">
+    <section class="card summary-actions">
       <form id="finalize-form" class="stack">
         <label>
           Feeling score
@@ -15,22 +34,16 @@
         </label>
         <label>
           Notes
-          <input type="text" id="workout-notes">
+          <textarea id="workout-notes" placeholder="Optional training notes"></textarea>
         </label>
-        <div class="status">External metrics will appear here when import reconciliation is implemented.</div>
-        <button type="submit">Finalize workout</button>
+        <div class="status">
+          External metrics will appear here when import reconciliation is implemented.
+        </div>
       </form>
     </section>
-
-    <section class="card">
-      <div class="number-band">
-        <span class="muted">Finalize state</span>
-        <strong id="finalize-status">Draft not finalized yet.</strong>
-        <span>Once finalized, the workout becomes part of history, suggestions, and analytics.</span>
-      </div>
-    </section>
-  </div>
-
+  </section>
+{% endblock %}
+{% block page_scripts %}
   <script>
     window.__summaryPage = {
       workoutId: {{ workout_id | tojson }},

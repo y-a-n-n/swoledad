@@ -58,7 +58,7 @@ def sync_one(client, app, activity):
 
 
 def test_compatibility_mapping_rules():
-    assert COMPATIBLE_WORKOUT_TYPES["running"] == {"imported_cardio", "cross_training"}
+    assert COMPATIBLE_WORKOUT_TYPES["running"] == {"run", "cross_training"}
     assert COMPATIBLE_WORKOUT_TYPES["strength"] == {"strength"}
 
 
@@ -145,6 +145,21 @@ def test_accept_creates_finalized_imported_workout_and_links(client, app):
     assert payload["workout"]["status"] == "finalized"
     assert payload["workout"]["source"] == "external_import"
     assert payload["external_activity"]["status"] == "linked"
+
+
+def test_accepted_runs_endpoint_lists_run_metrics(client, app):
+    pending = sync_one(client, app, _activity())
+    external_id = pending[0]["id"]
+    accept = client.post(f"/api/external/pending-imports/{external_id}/accept")
+    workout_id = accept.get_json()["workout"]["id"]
+
+    response = client.get("/api/external/accepted-runs")
+    assert response.status_code == 200
+    items = response.get_json()["items"]
+    assert items[0]["workout_id"] == workout_id
+    assert items[0]["distance_meters"] == 5000.0
+    assert items[0]["avg_heart_rate"] is None
+    assert items[0]["pace_seconds_per_km"] == 360.0
 
 
 def test_link_rejects_incompatible_or_already_linked_targets(client, app):

@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS workouts (
   id TEXT PRIMARY KEY,
-  type TEXT NOT NULL CHECK (type IN ('strength', 'cross_training', 'imported_cardio')),
+  type TEXT NOT NULL CHECK (type IN ('strength', 'cross_training', 'run')),
   status TEXT NOT NULL CHECK (status IN ('draft', 'finalized', 'archived')),
   started_at TEXT NOT NULL,
   ended_at TEXT NULL,

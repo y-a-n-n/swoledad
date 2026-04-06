@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KINETIC - ACTIVE WORKOUT</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&amp;family=Inter:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#131313",
+                        "inverse-primary": "#006e16",
+                        "on-tertiary-fixed": "#ffffff",
+                        "outline": "#919191",
+                        "on-background": "#e2e2e2",
+                        "on-tertiary": "#002203",
+                        "surface-container-highest": "#353535",
+                        "inverse-on-surface": "#303030",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "surface-tint": "#00e639",
+                        "surface-bright": "#393939",
+                        "surface-container": "#1f1f1f",
+                        "secondary": "#c6c6c7",
+                        "primary-container": "#00f63e",
+                        "tertiary-fixed-dim": "#00530e",
+                        "on-tertiary-container": "#000000",
+                        "surface-dim": "#131313",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#72ff70",
+                        "background": "#131313",
+                        "outline-variant": "#474747",
+                        "tertiary-fixed": "#006e16",
+                        "error": "#ffb4ab",
+                        "primary-fixed": "#006e16",
+                        "on-surface": "#e2e2e2",
+                        "on-primary": "#002203",
+                        "on-surface-variant": "#c6c6c6",
+                        "on-secondary": "#1a1c1c",
+                        "inverse-surface": "#e2e2e2",
+                        "surface-container-high": "#2a2a2a",
+                        "primary-fixed-dim": "#00530e",
+                        "primary": "#ffffff",
+                        "on-secondary-fixed-variant": "#3a3c3c",
+                        "tertiary": "#72ff70",
+                        "on-primary-fixed": "#ffffff",
+                        "secondary-container": "#454747",
+                        "surface-container-lowest": "#0e0e0e",
+                        "secondary-fixed": "#c6c6c7",
+                        "on-primary-container": "#000000",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-low": "#1b1b1b",
+                        "on-primary-fixed-variant": "#72ff70",
+                        "surface-variant": "#353535",
+                        "on-error": "#690005",
+                        "secondary-fixed-dim": "#aaabab",
+                        "on-secondary-container": "#e2e2e2",
+                        "tertiary-container": "#00a827"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "0px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-primary font-body overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#131313] border-b border-[#2A2A2A] flex justify-between items-center px-6 h-16 w-full">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#FFFFFF] hover:bg-[#1B1B1B] transition-colors duration-100 p-2 Active: scale-95 transition-transform" data-icon="menu">menu</span>
+<span class="font-['Space_Grotesk'] font-black text-2xl text-[#FFFFFF] tracking-[0.2em] uppercase">KINETIC</span>
+</div>
+<span class="material-symbols-outlined text-[#FFFFFF] hover:bg-[#1B1B1B] transition-colors duration-100 p-2 Active: scale-95 transition-transform" data-icon="settings">settings</span>
+</header>
+<main class="pt-24 pb-32 px-6 min-h-screen flex flex-col justify-between">
+<!-- Exercise Title -->
+<section class="w-full">
+<h1 class="font-headline font-black text-[15vw] leading-[0.8] tracking-tighter uppercase mb-12">
+                SQUAT
+            </h1>
+</section>
+<!-- Metrics Inputs -->
+<section class="grid grid-cols-1 gap-8 mb-12">
+<!-- Weight Input -->
+<div class="group">
+<label class="font-label text-sm tracking-widest text-outline mb-2 block uppercase">WEIGHT (KG)</label>
+<input class="w-full bg-transparent border-none border-b-4 border-surface-container-highest focus:border-tertiary focus:ring-0 font-headline font-bold text-[12vw] p-0 text-primary transition-colors duration-150" placeholder="000" type="number"/>
+</div>
+<!-- Reps Input -->
+<div class="group">
+<label class="font-label text-sm tracking-widest text-outline mb-2 block uppercase">REPS</label>
+<input class="w-full bg-transparent border-none border-b-4 border-surface-container-highest focus:border-tertiary focus:ring-0 font-headline font-bold text-[12vw] p-0 text-primary transition-colors duration-150" placeholder="00" type="number"/>
+</div>
+<!-- Sequence/Set Input -->
+<div class="group">
+<label class="font-label text-sm tracking-widest text-outline mb-2 block uppercase">SEQUENCE</label>
+<input class="w-full bg-transparent border-none border-b-4 border-surface-container-highest focus:border-tertiary focus:ring-0 font-headline font-bold text-[12vw] p-0 text-primary transition-colors duration-150" placeholder="01" type="number"/>
+</div>
+</section>
+<!-- Save Action -->
+<section class="w-full mb-16">
+<button class="w-full bg-tertiary text-on-tertiary font-headline font-black text-4xl py-10 uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all">
+                SAVE SET
+            </button>
+</section>
+<!-- Rest Timer Overlay/Section -->
+<section class="w-full flex flex-col items-start border-t border-surface-container-high pt-8">
+<label class="font-label text-xs tracking-[0.3em] text-outline uppercase mb-2">REST COUNTDOWN</label>
+<div class="font-headline font-light text-[22vw] leading-none tabular-nums tracking-tighter text-tertiary">
+                02:00
+            </div>
+</section>
+</main>
+<!-- BottomNavBar (Suppressed due to focus task context, but structure maintained if required by shell logic) -->
+<!-- The user requested "simplified workout screen" - we hide navigation to maximize focus per "Shell Visibility & Relevance" rule -->
+<!-- Contextual FAB (Suppressed on Task-Focused Details screen) -->
+<!-- Image for Context (Minimalist Gym vibe) -->
+<div class="fixed inset-0 -z-10 opacity-5 pointer-events-none">
+<img class="w-full h-full object-cover grayscale" data-alt="dramatic high-contrast black and white shot of a heavy weightlifting rack in a dark industrial gym setting with raw concrete walls" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2W0Xn4EGL4YqdrLMHVVg2IEygg_hIVkpl-I4GVc3jet0b32Yf108LbA_HDqTWRME4Z0TAFglCs_erVaanCxCShsHFUvcCuCAt4ZAFH4XSr5HDfdOwPzT87dsmJgdqlUnbm-12t0SKwfXEklcW0jJlBLLi8tshjrKku2d63kKaCf1WzBhJs1ovhaAsN4lhKZ7igP657oQfqaGCB_KuaCw5gOVBbK4hgrH9pTjZqiLxuCzF158ngzRgPQFyXl0rhKAiLkitcbSHt6rr"/>
+</div>
+</body></html>
