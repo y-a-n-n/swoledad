@@ -17,7 +17,13 @@ from .garmin_adapter import (
     GarminSetupRequiredError,
     build_garmin_adapter,
 )
-from .reconciliation_service import reconcile_external_activity_for_backfill
+from .reconciliation_service import (
+    BACKFILL_CANDIDATE_WINDOW_MINUTES,
+    choose_backfill_auto_link_candidate,
+    find_candidate_workouts_for_activity,
+    reconcile_external_activity_for_backfill,
+    score_backfill_candidates,
+)
 from .time_utils import utc_now
 
 BACKFILL_STATE_KEY = "garmin_history_backfill_state"
@@ -133,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
             ),
         )
     print(json.dumps(result, indent=2, sort_keys=True))
-    return 0
+    return 1 if result.get("status") == "failed" else 0
 
 
 def _process_windows(
@@ -206,7 +212,7 @@ def _process_single_window(
             normalized = normalize_garmin_activity(activity)
             next_state["counts"]["fetched"] += 1
             if dry_run:
-                changed_rows.append({"status": "dry_run"})
+                changed_rows.append(_build_dry_run_activity_report(connection, normalized))
                 continue
             changed = upsert_external_activity(connection, normalized)
             next_state["counts"]["imported"] += 1
@@ -218,13 +224,20 @@ def _process_single_window(
                 next_state["counts"]["auto_linked"] += 1
             elif row.get("status") == "pending_review":
                 next_state["counts"]["pending_review"] += 1
+        if dry_run:
+            next_state["dry_run_report"] = _merge_dry_run_reports(
+                next_state.get("dry_run_report"),
+                window_start=window_start,
+                window_end=window_end,
+                rows=changed_rows,
+            )
         next_state["last_completed_window"] = {"start_date": window_start.isoformat(), "end_date": window_end.isoformat()}
         next_state["next_start_date"] = (window_end + timedelta(days=1)).isoformat()
         next_state["last_error"] = None
         next_state["status"] = "running"
         next_state["updated_at"] = now_iso
         return next_state
-    except (GarminAuthError, GarminNetworkError, GarminParseError, GarminSetupRequiredError) as exc:
+    except (GarminAuthError, GarminNetworkError, GarminParseError, GarminSetupRequiredError, sqlite3.DatabaseError) as exc:
         connection.rollback()
         next_state["status"] = "failed"
         next_state["last_error"] = str(exc)
@@ -267,6 +280,7 @@ def _build_effective_state(
             "pending_review": 0,
             "failed_windows": 0,
         },
+        "dry_run_report": _empty_dry_run_report() if options.dry_run else None,
         "created_at": now_iso,
         "updated_at": now_iso,
     }
@@ -307,6 +321,109 @@ def _save_backfill_state(connection: sqlite3.Connection, state: dict[str, Any]) 
         """,
         (BACKFILL_STATE_KEY, json.dumps(state, sort_keys=True)),
     )
+
+
+def _build_dry_run_activity_report(connection: sqlite3.Connection, activity: dict[str, Any]) -> dict[str, Any]:
+    existing = connection.execute(
+        """
+        SELECT id, status, linked_workout_id
+        FROM external_activities
+        WHERE provider = ? AND provider_activity_id = ?
+        """,
+        (activity["provider"], activity["provider_activity_id"]),
+    ).fetchone()
+    if existing is not None:
+        report = {
+            "provider_activity_id": activity["provider_activity_id"],
+            "activity_type": activity["activity_type"],
+            "started_at": activity["started_at"],
+            "ended_at": activity["ended_at"],
+            "candidate_count": 0,
+            "candidates": [],
+        }
+        if existing["status"] == "linked":
+            report["status"] = "linked"
+            report["linked_workout_id"] = existing["linked_workout_id"]
+            report["report_bucket"] = "already_linked"
+            return report
+        if existing["status"] == "dismissed":
+            report["status"] = "dismissed"
+            report["linked_workout_id"] = existing["linked_workout_id"]
+            report["report_bucket"] = "dismissed"
+            return report
+
+    candidates = find_candidate_workouts_for_activity(
+        connection,
+        activity,
+        window_minutes=BACKFILL_CANDIDATE_WINDOW_MINUTES,
+        exclude_linked=True,
+    )
+    scored = score_backfill_candidates(activity, candidates)
+    best = choose_backfill_auto_link_candidate(activity, candidates)
+    report = {
+        "provider_activity_id": activity["provider_activity_id"],
+        "activity_type": activity["activity_type"],
+        "started_at": activity["started_at"],
+        "ended_at": activity["ended_at"],
+        "candidate_count": len(scored),
+        "candidates": [
+            {
+                "id": candidate["id"],
+                "type": candidate["type"],
+                "started_at": candidate["started_at"],
+                "ended_at": candidate.get("ended_at"),
+                "match_score": candidate["match_score"],
+            }
+            for candidate in scored[:5]
+        ],
+    }
+    if best is not None:
+        report["status"] = "linked"
+        report["linked_workout_id"] = best["id"]
+        report["report_bucket"] = "linked"
+        return report
+    report["status"] = "pending_review"
+    report["linked_workout_id"] = None
+    report["report_bucket"] = "ambiguous" if scored else "unlinked"
+    return report
+
+
+def _empty_dry_run_report() -> dict[str, Any]:
+    return {
+        "linked": [],
+        "ambiguous": [],
+        "unlinked": [],
+        "already_linked": [],
+        "dismissed": [],
+        "windows": [],
+    }
+
+
+def _merge_dry_run_reports(
+    report: dict[str, Any] | None,
+    *,
+    window_start: date,
+    window_end: date,
+    rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    merged = dict(report or _empty_dry_run_report())
+    window_summary = {
+        "start_date": window_start.isoformat(),
+        "end_date": window_end.isoformat(),
+        "linked": 0,
+        "ambiguous": 0,
+        "unlinked": 0,
+        "already_linked": 0,
+        "dismissed": 0,
+    }
+    for row in rows:
+        bucket = row.get("report_bucket")
+        if bucket not in {"linked", "ambiguous", "unlinked", "already_linked", "dismissed"}:
+            continue
+        merged[bucket].append(row)
+        window_summary[bucket] += 1
+    merged["windows"].append(window_summary)
+    return merged
 
 
 def _parse_date(value: str) -> date:

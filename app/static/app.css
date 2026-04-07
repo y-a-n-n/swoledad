@@ -731,12 +731,81 @@ textarea {
 }
 
 .history-link {
+  display: grid;
+  gap: var(--space-4);
   text-decoration: none;
   transition: background 100ms ease, color 100ms ease;
 }
 
+.history-card {
+  display: grid;
+  gap: var(--space-4);
+}
+
 .history-link:hover {
   background: var(--surface-container-high);
+}
+
+.history-card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.history-delete-button,
+.history-delete-confirm {
+  background: #341516;
+  color: var(--error);
+}
+
+.history-delete-button:hover,
+.history-delete-confirm:hover {
+  background: #512021;
+  color: #ffd7d2;
+}
+
+.history-modal-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: var(--space-3);
+}
+
+.history-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.history-modal {
+  position: relative;
+  z-index: 1;
+  width: min(34rem, calc(100vw - 2rem));
+  display: grid;
+  gap: var(--space-3);
+}
+
+.history-modal-actions {
+  justify-content: flex-end;
+}
+
+.history-modal-error {
+  margin: 0;
+}
+
+.history-empty-state {
+  min-height: 12rem;
+  place-items: center;
+}
+
+.hidden {
+  display: none !important;
+}
+
+body.modal-open {
+  overflow: hidden;
 }
 
 .history-stats-grid {

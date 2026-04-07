@@ -163,6 +163,80 @@ def update_workout_reflection(
     return get_workout_payload(connection, workout_id)
 
 
+def delete_workout(connection: sqlite3.Connection, workout_id: str) -> dict[str, Any]:
+    workout = connection.execute(
+        """
+        SELECT id, status
+        FROM workouts
+        WHERE id = ?
+        """,
+        (workout_id,),
+    ).fetchone()
+    if workout is None:
+        raise LookupError("workout not found")
+    if workout["status"] != "finalized":
+        raise LookupError("workout not found")
+
+    linked_external_rows = connection.execute(
+        """
+        SELECT id
+        FROM external_activities
+        WHERE linked_workout_id = ?
+        """,
+        (workout_id,),
+    ).fetchall()
+    now = utc_now()
+    for linked_external in linked_external_rows:
+        execute_write(
+            connection,
+            """
+            UPDATE external_activities
+            SET linked_workout_id = NULL, status = 'pending_review', updated_at = ?
+            WHERE id = ?
+            """,
+            (now, linked_external["id"]),
+        )
+
+    execute_write(
+        connection,
+        """
+        DELETE FROM client_operation_log
+        WHERE workout_id = ?
+        """,
+        (workout_id,),
+    )
+
+    execute_write(
+        connection,
+        """
+        DELETE FROM workouts
+        WHERE id = ?
+        """,
+        (workout_id,),
+    )
+    _rebuild_exercise_dictionary(connection)
+    connection.commit()
+    return {"deleted_workout_id": workout_id, "status": "deleted"}
+
+
+def _rebuild_exercise_dictionary(connection: sqlite3.Connection) -> None:
+    execute_write(connection, "DELETE FROM exercise_dictionary")
+    connection.execute(
+        """
+        INSERT INTO exercise_dictionary (name, first_seen_at, last_seen_at, usage_count)
+        SELECT
+          ws.exercise_name,
+          MIN(w.started_at) AS first_seen_at,
+          MAX(w.started_at) AS last_seen_at,
+          COUNT(*) AS usage_count
+        FROM workout_sets ws
+        JOIN workouts w ON w.id = ws.workout_id
+        WHERE w.status = 'finalized'
+        GROUP BY ws.exercise_name
+        """
+    )
+
+
 def _calculate_pace_seconds_per_km(distance_meters: float | None, duration_seconds: int | None) -> float | None:
     if not distance_meters or not duration_seconds or distance_meters <= 0:
         return None

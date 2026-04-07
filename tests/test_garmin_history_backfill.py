@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import sqlite3
+
+import app as app_package
+
 from app.garmin_history_backfill import (
     BACKFILL_STATE_KEY,
     BackfillOptions,
     get_backfill_state,
+    main,
     run_garmin_history_backfill,
 )
 
@@ -95,6 +100,11 @@ def test_backfill_dry_run_fetches_without_writing_rows_or_state(app):
 
     assert adapter.calls == [("2026-03-28T00:00:00Z", "2026-03-28T23:59:59Z")]
     assert result["counts"]["fetched"] == 1
+    assert result["counts"]["auto_linked"] == 1
+    assert result["counts"]["pending_review"] == 0
+    assert result["dry_run_report"]["linked"][0]["linked_workout_id"] == "w1"
+    assert result["dry_run_report"]["ambiguous"] == []
+    assert result["dry_run_report"]["unlinked"] == []
     assert row_count == 0
     assert config_row == 0
 
@@ -214,3 +224,76 @@ def test_backfill_failure_records_state_and_stops(app):
     assert sleeps == [12]
     assert state is not None
     assert state["last_error"] == "offline"
+
+
+def test_backfill_dry_run_reports_ambiguous_and_unlinked_rows(app):
+    adapter = RecordingGarminAdapter(
+        windows={
+            ("2026-03-28", "2026-03-28"): [
+                _activity(activity_id="ambiguous", started_at="2026-03-28T12:00:00Z", ended_at="2026-03-28T12:30:00Z"),
+                _activity(activity_id="unlinked", started_at="2026-03-28T16:00:00Z", ended_at="2026-03-28T16:30:00Z"),
+            ],
+        }
+    )
+    app.config["GARMIN_ADAPTER_FACTORY"] = lambda: adapter
+    _seed_workout(app, "cross-1", "cross_training", "2026-03-28T12:05:00Z", "2026-03-28T12:31:00Z")
+    _seed_workout(app, "cross-2", "cross_training", "2026-03-28T12:04:00Z", "2026-03-28T12:29:00Z")
+
+    with app.app_context():
+        from app.db import get_db
+
+        result = run_garmin_history_backfill(
+            get_db(),
+            app.config,
+            BackfillOptions(start_date="2026-03-28", end_date="2026-03-28", window_days=1, sleep_seconds=0, dry_run=True),
+        )
+
+    assert result["counts"]["auto_linked"] == 0
+    assert result["counts"]["pending_review"] == 2
+    assert [item["provider_activity_id"] for item in result["dry_run_report"]["ambiguous"]] == ["ambiguous"]
+    assert [item["provider_activity_id"] for item in result["dry_run_report"]["unlinked"]] == ["unlinked"]
+
+
+def test_backfill_database_failure_records_state_and_stops(app, monkeypatch):
+    adapter = RecordingGarminAdapter(
+        windows={
+            ("2026-03-28", "2026-03-28"): [_activity()],
+        }
+    )
+    app.config["GARMIN_ADAPTER_FACTORY"] = lambda: adapter
+    _seed_workout(app, "w1", "run", "2026-03-28T10:02:00Z", "2026-03-28T10:31:00Z")
+
+    def raise_db_error(connection, activity):
+        raise sqlite3.DatabaseError("db write failed")
+
+    monkeypatch.setattr("app.garmin_history_backfill.upsert_external_activity", raise_db_error)
+
+    with app.app_context():
+        from app.db import get_db
+
+        result = run_garmin_history_backfill(
+            get_db(),
+            app.config,
+            BackfillOptions(start_date="2026-03-28", end_date="2026-03-28", window_days=1, sleep_seconds=0, backoff_seconds=0),
+        )
+        state = get_backfill_state(get_db())
+
+    assert result["status"] == "failed"
+    assert result["last_error"] == "db write failed"
+    assert state is not None
+    assert state["status"] == "failed"
+    assert state["last_error"] == "db write failed"
+
+
+def test_backfill_main_returns_non_zero_on_failure(app, monkeypatch, capsys):
+    monkeypatch.setattr(app_package, "create_app", lambda: app)
+
+    def fail(*args, **kwargs):
+        return {"status": "failed", "last_error": "offline"}
+
+    monkeypatch.setattr("app.garmin_history_backfill.run_garmin_history_backfill", fail)
+
+    exit_code = main(["--dry-run"])
+
+    assert exit_code == 1
+    assert '"status": "failed"' in capsys.readouterr().out

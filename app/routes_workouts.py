@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from http import HTTPStatus
+import sqlite3
 
 from flask import Blueprint, current_app, jsonify, request
 
@@ -21,7 +22,7 @@ from .reconciliation_service import (
 )
 from .set_service import delete_set, upsert_set
 from .suggestions import get_big3_prefill, get_exercise_suggestions
-from .workout_service import create_draft, get_workout_payload, update_workout_reflection
+from .workout_service import create_draft, delete_workout, get_workout_payload, update_workout_reflection
 
 workouts_bp = Blueprint("workouts", __name__)
 
@@ -64,6 +65,19 @@ def post_finalize(workout_id: str):
     except PermissionError as exc:
         return jsonify({"error": str(exc)}), HTTPStatus.CONFLICT
     return jsonify(result.payload), result.status_code
+
+
+@workouts_bp.delete("/api/workouts/<workout_id>")
+def delete_workout_route(workout_id: str):
+    connection = get_db()
+    try:
+        payload = delete_workout(connection, workout_id)
+    except LookupError as exc:
+        return jsonify({"error": str(exc)}), HTTPStatus.NOT_FOUND
+    except sqlite3.DatabaseError:
+        connection.rollback()
+        return jsonify({"error": "Unable to delete workout"}), HTTPStatus.INTERNAL_SERVER_ERROR
+    return jsonify(payload)
 
 
 @workouts_bp.post("/api/client-operations")

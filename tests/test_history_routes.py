@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sqlite3
+
 
 def seed_history_data(app):
     with app.app_context():
@@ -86,6 +88,101 @@ def test_history_page_renders_title_and_detail_links(client, app):
     assert "<h1>History</h1>" in html
     assert 'href="/history/history-run"' in html
     assert 'href="/history/history-strength"' in html
+    assert 'data-delete-workout="history-run"' in html
+    assert 'id="history-delete-modal"' in html
+
+
+def test_delete_workout_removes_finalized_manual_workout_and_sets(client, app):
+    seed_history_data(app)
+
+    response = client.delete("/api/workouts/history-strength")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"deleted_workout_id": "history-strength", "status": "deleted"}
+    with app.app_context():
+        from app.db import get_db
+
+        db = get_db()
+        workout = db.execute("SELECT id FROM workouts WHERE id = 'history-strength'").fetchone()
+        sets = db.execute("SELECT COUNT(*) AS count FROM workout_sets WHERE workout_id = 'history-strength'").fetchone()
+    assert workout is None
+    assert sets["count"] == 0
+
+
+def test_delete_workout_unlinks_external_activity_back_to_pending_review(client, app):
+    seed_history_data(app)
+
+    response = client.delete("/api/workouts/history-run")
+
+    assert response.status_code == 200
+    with app.app_context():
+        from app.db import get_db
+
+        row = get_db().execute(
+            """
+            SELECT status, linked_workout_id
+            FROM external_activities
+            WHERE id = 'history-run-external'
+            """
+        ).fetchone()
+    assert row["status"] == "pending_review"
+    assert row["linked_workout_id"] is None
+
+
+def test_delete_workout_removes_client_operation_log_rows(client, app):
+    seed_history_data(app)
+    with app.app_context():
+        from app.db import get_db
+
+        db = get_db()
+        db.execute(
+            """
+            INSERT INTO client_operation_log (
+              operation_id, workout_id, operation_type, received_at, applied_at, status, error_message, payload_json
+            ) VALUES (
+              '11111111-1111-4111-8111-111111111111', 'history-strength', 'finalize_workout',
+              '2026-03-20T11:00:00Z', '2026-03-20T11:00:00Z', 'applied', NULL, '{}'
+            )
+            """
+        )
+        db.commit()
+
+    response = client.delete("/api/workouts/history-strength")
+
+    assert response.status_code == 200
+    with app.app_context():
+        from app.db import get_db
+
+        count = get_db().execute(
+            "SELECT COUNT(*) AS count FROM client_operation_log WHERE workout_id = 'history-strength'"
+        ).fetchone()
+    assert count["count"] == 0
+
+
+def test_delete_workout_rejects_missing_or_non_finalized_workouts(client, app):
+    seed_history_data(app)
+
+    missing = client.delete("/api/workouts/does-not-exist")
+    draft = client.delete("/api/workouts/history-draft")
+    archived = client.delete("/api/workouts/history-archived")
+
+    assert missing.status_code == 404
+    assert draft.status_code == 404
+    assert archived.status_code == 404
+
+
+def test_delete_workout_returns_json_error_on_database_failure(client, app, monkeypatch):
+    seed_history_data(app)
+
+    def raise_db_error(connection, workout_id):
+        raise sqlite3.DatabaseError("db locked")
+
+    monkeypatch.setattr("app.routes_workouts.delete_workout", raise_db_error)
+
+    response = client.delete("/api/workouts/history-strength")
+
+    assert response.status_code == 500
+    assert response.get_json() == {"error": "Unable to delete workout"}
 
 
 def test_history_detail_page_renders_summary_and_ordered_sets(client, app):
