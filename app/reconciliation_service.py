@@ -9,6 +9,9 @@ from .db import execute_write
 from .time_utils import utc_now
 
 AUTO_LINK_WINDOW_MINUTES = 15
+BACKFILL_CANDIDATE_WINDOW_MINUTES = 120
+BACKFILL_AUTO_LINK_MIN_SCORE = 70
+BACKFILL_MIN_SCORE_MARGIN = 20
 
 COMPATIBLE_WORKOUT_TYPES = {
     "running": {"run", "cross_training"},
@@ -38,23 +41,89 @@ def reconcile_external_activity(
     return _serialize_external_activity(_load_external_activity(connection, external_activity_id))
 
 
+def reconcile_external_activity_for_backfill(
+    connection: sqlite3.Connection, external_activity_id: str, *, commit: bool = True
+) -> dict[str, Any]:
+    activity = _load_external_activity(connection, external_activity_id)
+    if activity["linked_workout_id"] or activity["status"] == "dismissed":
+        return _serialize_external_activity(activity)
+    candidates = find_candidate_workouts_for_backfill(connection, external_activity_id)
+    best = choose_backfill_auto_link_candidate(activity, candidates)
+    if best is not None:
+        return link_external_activity(connection, external_activity_id, best["id"], commit=commit)
+    execute_write(
+        connection,
+        "UPDATE external_activities SET status = 'pending_review', updated_at = ? WHERE id = ?",
+        (utc_now(), external_activity_id),
+    )
+    if commit:
+        connection.commit()
+    return _serialize_external_activity(_load_external_activity(connection, external_activity_id))
+
+
 def find_candidate_workouts(connection: sqlite3.Connection, external_activity_id: str) -> list[dict[str, Any]]:
     activity = _load_external_activity(connection, external_activity_id)
+    candidates = find_candidate_workouts_for_activity(
+        connection,
+        dict(activity),
+        window_minutes=AUTO_LINK_WINDOW_MINUTES,
+        exclude_linked=False,
+    )
+    return [
+        {
+            "id": candidate["id"],
+            "type": candidate["type"],
+            "status": candidate["status"],
+            "started_at": candidate["started_at"],
+        }
+        for candidate in candidates
+    ]
+
+
+def find_candidate_workouts_for_backfill(
+    connection: sqlite3.Connection, external_activity_id: str
+) -> list[dict[str, Any]]:
+    activity = _load_external_activity(connection, external_activity_id)
+    return find_candidate_workouts_for_activity(
+        connection,
+        dict(activity),
+        window_minutes=BACKFILL_CANDIDATE_WINDOW_MINUTES,
+        exclude_linked=True,
+    )
+
+
+def find_candidate_workouts_for_activity(
+    connection: sqlite3.Connection,
+    activity: dict[str, Any],
+    *,
+    window_minutes: int,
+    exclude_linked: bool,
+) -> list[dict[str, Any]]:
     allowed_types = COMPATIBLE_WORKOUT_TYPES.get(activity["activity_type"], {"run"})
     started_at = _parse_iso(activity["started_at"])
-    window_start = _to_iso(started_at - timedelta(minutes=AUTO_LINK_WINDOW_MINUTES))
-    window_end = _to_iso(started_at + timedelta(minutes=AUTO_LINK_WINDOW_MINUTES))
+    window_start = _to_iso(started_at - timedelta(minutes=window_minutes))
+    window_end = _to_iso(started_at + timedelta(minutes=window_minutes))
     rows = connection.execute(
         """
-        SELECT id, type, status, started_at
-        FROM workouts
-        WHERE started_at BETWEEN ? AND ?
-          AND type IN ({placeholders})
-          AND status != 'archived'
-        ORDER BY started_at ASC
+        SELECT
+          w.id,
+          w.type,
+          w.status,
+          w.started_at,
+          w.ended_at,
+          e.id AS linked_external_activity_id
+        FROM workouts w
+        LEFT JOIN external_activities e
+          ON e.linked_workout_id = w.id
+        WHERE w.started_at BETWEEN ? AND ?
+          AND w.type IN ({placeholders})
+          AND w.status != 'archived'
+        ORDER BY w.started_at ASC
         """.format(placeholders=", ".join("?" for _ in allowed_types)),
         (window_start, window_end, *sorted(allowed_types)),
     ).fetchall()
+    if exclude_linked:
+        return [dict(row) for row in rows if row["linked_external_activity_id"] is None]
     return [dict(row) for row in rows]
 
 
@@ -157,6 +226,37 @@ def link_external_activity(
     return _serialize_external_activity(_load_external_activity(connection, external_activity_id))
 
 
+def choose_backfill_auto_link_candidate(
+    activity: sqlite3.Row | dict[str, Any], candidates: list[dict[str, Any]]
+) -> dict[str, Any] | None:
+    scored = score_backfill_candidates(activity, candidates)
+    if not scored:
+        return None
+    best = scored[0]
+    next_best_score = scored[1]["match_score"] if len(scored) > 1 else None
+    if best["match_score"] < BACKFILL_AUTO_LINK_MIN_SCORE:
+        return None
+    if next_best_score is not None and best["match_score"] - next_best_score < BACKFILL_MIN_SCORE_MARGIN:
+        return None
+    return best
+
+
+def score_backfill_candidates(
+    activity: sqlite3.Row | dict[str, Any], candidates: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    payload = dict(activity)
+    scored = [{**candidate, "match_score": _score_candidate(payload, candidate)} for candidate in candidates]
+    scored.sort(
+        key=lambda item: (
+            -item["match_score"],
+            abs((_parse_iso(item["started_at"]) - _parse_iso(payload["started_at"])).total_seconds()),
+            item["started_at"],
+            item["id"],
+        )
+    )
+    return scored
+
+
 def _determine_accept_workout_type(activity_type: str, type_override: str | None) -> str:
     if activity_type == "strength":
         raise ValueError("strength imports must link to an existing workout")
@@ -207,6 +307,53 @@ def _serialize_external_activity(row: sqlite3.Row) -> dict[str, Any]:
         "linked_workout_id": row["linked_workout_id"],
         "dismissed_at": row["dismissed_at"],
     }
+
+
+def _score_candidate(activity: dict[str, Any], candidate: dict[str, Any]) -> int:
+    score = 0
+    if candidate["type"] not in COMPATIBLE_WORKOUT_TYPES.get(activity["activity_type"], set()):
+        return -999
+
+    if activity["activity_type"] == "running" and candidate["type"] == "run":
+        score += 30
+    elif activity["activity_type"] == "cycling" and candidate["type"] == "cross_training":
+        score += 30
+    elif activity["activity_type"] == "strength" and candidate["type"] == "strength":
+        score += 30
+
+    start_delta_seconds = abs((_parse_iso(candidate["started_at"]) - _parse_iso(activity["started_at"])).total_seconds())
+    if start_delta_seconds <= 5 * 60:
+        score += 60
+    elif start_delta_seconds <= 15 * 60:
+        score += 40
+    elif start_delta_seconds <= 30 * 60:
+        score += 25
+    elif start_delta_seconds <= 60 * 60:
+        score += 10
+
+    candidate_ended_at = candidate.get("ended_at")
+    activity_ended_at = activity.get("ended_at")
+    if candidate_ended_at and activity_ended_at:
+        end_delta_seconds = abs((_parse_iso(candidate_ended_at) - _parse_iso(activity_ended_at)).total_seconds())
+        if end_delta_seconds <= 10 * 60:
+            score += 25
+
+        candidate_duration_seconds = abs(
+            (_parse_iso(candidate_ended_at) - _parse_iso(candidate["started_at"])).total_seconds()
+        )
+        activity_duration_seconds = abs(
+            (_parse_iso(activity_ended_at) - _parse_iso(activity["started_at"])).total_seconds()
+        )
+        duration_delta_seconds = abs(candidate_duration_seconds - activity_duration_seconds)
+        if duration_delta_seconds <= 5 * 60 or (
+            activity_duration_seconds > 0 and duration_delta_seconds <= activity_duration_seconds * 0.10
+        ):
+            score += 20
+        elif duration_delta_seconds <= 10 * 60 or (
+            activity_duration_seconds > 0 and duration_delta_seconds <= activity_duration_seconds * 0.20
+        ):
+            score += 10
+    return score
 
 
 def _parse_iso(value: str):
