@@ -159,6 +159,13 @@ async function mutateLocalDraft(mutator) {
   return nextDraft;
 }
 
+function nextSequenceIndex(setRows) {
+  if (!Array.isArray(setRows) || setRows.length === 0) {
+    return 0;
+  }
+  return Math.max(...setRows.map((item) => Number(item.sequence_index ?? -1))) + 1;
+}
+
 async function upsertSet(event) {
   event.preventDefault();
   const workoutId = currentWorkoutId();
@@ -172,7 +179,6 @@ async function upsertSet(event) {
     payload: {
       set_id: setId,
       exercise_name: document.getElementById("exercise-name").value,
-      sequence_index: Number(document.getElementById("sequence-index").value),
       weight_kg: document.getElementById("weight-kg").value ? Number(document.getElementById("weight-kg").value) : null,
       reps: document.getElementById("reps").value ? Number(document.getElementById("reps").value) : null,
       duration_seconds: document.getElementById("duration-seconds").value ? Number(document.getElementById("duration-seconds").value) : null,
@@ -183,7 +189,12 @@ async function upsertSet(event) {
     draft.last_local_write_at = operation.client_timestamp;
     draft.pending_operation_ids = [...draft.pending_operation_ids, operation.operation_id];
     const existingIndex = draft.set_rows.findIndex((item) => item.id === setId);
-    const nextSet = { id: setId, ...operation.payload };
+    const existingSet = existingIndex >= 0 ? draft.set_rows[existingIndex] : null;
+    const nextSet = {
+      id: setId,
+      ...operation.payload,
+      sequence_index: existingSet ? existingSet.sequence_index : nextSequenceIndex(draft.set_rows),
+    };
     if (existingIndex >= 0) {
       draft.set_rows[existingIndex] = nextSet;
     } else {
@@ -333,7 +344,6 @@ document.getElementById("set-list")?.addEventListener("click", (event) => {
     }
     document.getElementById("set-id").value = selected.id;
     document.getElementById("exercise-name").value = selected.exercise_name;
-    document.getElementById("sequence-index").value = selected.sequence_index;
     document.getElementById("set-type").value = selected.set_type;
     document.getElementById("weight-kg").value = selected.weight_kg ?? "";
     document.getElementById("reps").value = selected.reps ?? "";

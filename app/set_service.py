@@ -39,7 +39,7 @@ def upsert_set(
     if operation_type != "upsert_set":
         raise ValueError("operation_type must be upsert_set")
 
-    validated = _validate_set_payload(payload)
+    validated = _validate_set_payload(payload, connection, workout_id, set_id)
     now = utc_now()
     existing = connection.execute(
         "SELECT id, created_at FROM workout_sets WHERE id = ? AND workout_id = ?",
@@ -149,16 +149,19 @@ def list_sets(connection: sqlite3.Connection, workout_id: str) -> list[dict[str,
     return [dict(row) for row in rows]
 
 
-def _validate_set_payload(payload: dict[str, Any]) -> dict[str, Any]:
+def _validate_set_payload(
+    payload: dict[str, Any],
+    connection: sqlite3.Connection,
+    workout_id: str,
+    set_id: str,
+) -> dict[str, Any]:
     exercise_name = payload.get("exercise_name")
     if not isinstance(exercise_name, str) or not exercise_name.strip():
         raise ValueError("exercise_name is required")
     set_type = payload.get("set_type")
     if set_type not in SET_TYPES:
         raise ValueError("set_type must be one of normal, amrap, for_time")
-    sequence_index = int(payload.get("sequence_index"))
-    if sequence_index < 0:
-        raise ValueError("sequence_index cannot be negative")
+    sequence_index = _resolve_sequence_index(connection, workout_id, set_id, payload.get("sequence_index"))
 
     weight_raw = payload.get("weight_kg")
     reps_raw = payload.get("reps")
@@ -192,6 +195,32 @@ def _validate_set_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "duration_seconds": duration_seconds,
         "set_type": set_type,
     }
+
+
+def _resolve_sequence_index(
+    connection: sqlite3.Connection,
+    workout_id: str,
+    set_id: str,
+    raw_sequence_index: Any,
+) -> int:
+    if raw_sequence_index is not None:
+        sequence_index = int(raw_sequence_index)
+        if sequence_index < 0:
+            raise ValueError("sequence_index cannot be negative")
+        return sequence_index
+
+    existing = connection.execute(
+        "SELECT sequence_index FROM workout_sets WHERE id = ? AND workout_id = ?",
+        (set_id, workout_id),
+    ).fetchone()
+    if existing is not None:
+        return int(existing["sequence_index"])
+
+    max_row = connection.execute(
+        "SELECT COALESCE(MAX(sequence_index), -1) AS max_sequence_index FROM workout_sets WHERE workout_id = ?",
+        (workout_id,),
+    ).fetchone()
+    return int(max_row["max_sequence_index"]) + 1
 
 
 def _load_mutable_workout(connection: sqlite3.Connection, workout_id: str) -> sqlite3.Row:

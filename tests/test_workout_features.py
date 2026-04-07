@@ -116,6 +116,37 @@ def test_duplicate_operation_id_does_not_duplicate_mutation(client):
     assert len(workout["sets"]) == 1
 
 
+def test_upsert_set_auto_assigns_sequence_index_within_workout(client):
+    draft = _draft_payload()
+    client.post("/api/workouts/draft", json=draft)
+
+    first = client.put(
+        f"/api/workouts/{draft['workout_id']}/sets/11111111-1111-4111-8111-111111111111",
+        json=_upsert_payload("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", sequence_index=None, exercise_name="Bench Press"),
+    )
+    second = client.put(
+        f"/api/workouts/{draft['workout_id']}/sets/22222222-2222-4222-8222-222222222222",
+        json=_upsert_payload("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", sequence_index=None, exercise_name="Squat"),
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.get_json()["set"]["sequence_index"] == 0
+    assert second.get_json()["set"]["sequence_index"] == 1
+
+
+def test_workout_page_does_not_render_manual_sequence_field(client):
+    draft = _draft_payload()
+    client.post("/api/workouts/draft", json=draft)
+
+    response = client.get(f"/workouts/{draft['workout_id']}")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert 'id="sequence-index"' not in html
+    assert "Sequence" not in html
+
+
 def test_suggestion_endpoint_returns_prefix_matches(client, app):
     seed_finalized_history(app)
     response = client.get("/api/exercises/suggestions?query=Be")
