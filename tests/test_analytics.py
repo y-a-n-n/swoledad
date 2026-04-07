@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from app.analytics_service import calculate_calories_per_minute, calculate_estimated_one_rm
+from app.analytics_service import (
+    calculate_calories_per_minute,
+    calculate_estimated_one_rm,
+    compute_strength_summary_from_sets,
+)
 
 
 def seed_analytics_data(app):
@@ -39,6 +43,17 @@ def seed_analytics_data(app):
 
 def test_estimated_one_rm_calculation():
     assert calculate_estimated_one_rm(100, 5) == 116.67
+
+
+def test_compute_strength_summary_matches_big3_and_volume():
+    sets = [
+        {"exercise_name": "Bench Press", "weight_kg": 80, "reps": 5},
+        {"exercise_name": "Bench Press", "weight_kg": 82.5, "reps": 5},
+        {"exercise_name": "Bent Over Row", "weight_kg": 60, "reps": 8},
+    ]
+    summary = compute_strength_summary_from_sets(sets)
+    assert summary["big3_estimated_1rm_kg"] == 96.25
+    assert summary["total_weight_moved_kg"] == 1292.5
 
 
 def test_calories_per_minute_calculation_and_null_handling():

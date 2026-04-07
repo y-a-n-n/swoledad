@@ -32,15 +32,71 @@
               {% endif %}
             </div>
 
-            <div class="history-stats-grid">
-              <div class="number-band">
-                <span class="metric-label">Exercises</span>
-                <strong>{{ item.exercise_count }}</strong>
-              </div>
-              <div class="number-band">
-                <span class="metric-label">Sets</span>
-                <strong>{{ item.set_count }}</strong>
-              </div>
+            {% set is_run = item.type in ["run", "running"] %}
+            {% set is_strength = item.type == "strength" %}
+            <div class="history-stats-grid{% if is_strength %} history-stats-grid--strength{% endif %}">
+              {% if is_run %}
+                <div class="number-band">
+                  <span class="metric-label">Distance</span>
+                  <strong>
+                    {% if item.linked_external_metrics and item.linked_external_metrics.distance_meters is not none %}
+                      {{ (item.linked_external_metrics.distance_meters / 1000)|round(1) }} km
+                    {% else %}
+                      —
+                    {% endif %}
+                  </strong>
+                </div>
+                <div class="number-band">
+                  <span class="metric-label">Pace</span>
+                  <strong>
+                    {% if item.linked_external_metrics and item.linked_external_metrics.pace_seconds_per_km is not none %}
+                      {{ item.linked_external_metrics.pace_seconds_per_km|mmss }}/km
+                    {% else %}
+                      —
+                    {% endif %}
+                  </strong>
+                </div>
+              {% elif is_strength %}
+                <div class="number-band">
+                  <span class="metric-label">Est. 1RM</span>
+                  <strong>
+                    {% if item.big3_estimated_1rm_kg is not none %}
+                      {{ item.big3_estimated_1rm_kg }} kg
+                    {% else %}
+                      —
+                    {% endif %}
+                  </strong>
+                </div>
+                <div class="number-band">
+                  <span class="metric-label">Intensity</span>
+                  <strong>
+                    {% if item.linked_external_metrics and item.linked_external_metrics.calories_per_minute is not none %}
+                      {{ item.linked_external_metrics.calories_per_minute }} cal/min
+                    {% else %}
+                      —
+                    {% endif %}
+                  </strong>
+                </div>
+                <div class="number-band">
+                  <span class="metric-label">Total weight</span>
+                  <strong>
+                    {% if item.total_weight_moved_kg is not none %}
+                      {{ item.total_weight_moved_kg }} kg
+                    {% else %}
+                      —
+                    {% endif %}
+                  </strong>
+                </div>
+              {% else %}
+                <div class="number-band">
+                  <span class="metric-label">Exercises</span>
+                  <strong>{{ item.exercise_count }}</strong>
+                </div>
+                <div class="number-band">
+                  <span class="metric-label">Sets</span>
+                  <strong>{{ item.set_count }}</strong>
+                </div>
+              {% endif %}
             </div>
 
             {% if item.linked_external_metrics %}

@@ -67,10 +67,14 @@ def test_api_history_rows_include_compact_counts_and_run_metrics(client, app):
     assert strength["notes_present"] is True
     assert "notes" not in strength
     assert strength["linked_external_metrics"] is None
+    assert strength["total_weight_moved_kg"] == 1292.5
+    assert strength["big3_estimated_1rm_kg"] == 96.25
 
     run = items["history-run"]
     assert run["exercise_count"] == 0
     assert run["set_count"] == 0
+    assert run["total_weight_moved_kg"] == 0.0
+    assert run["big3_estimated_1rm_kg"] is None
     assert run["notes_present"] is False
     assert run["linked_external_metrics"]["distance_meters"] == 5000
     assert run["linked_external_metrics"]["duration_seconds"] == 1920
@@ -88,6 +92,20 @@ def test_history_page_renders_title_and_detail_links(client, app):
     assert "<h1>History</h1>" in html
     assert 'href="/history/history-run"' in html
     assert 'href="/history/history-strength"' in html
+    # Run cards surface distance (km) and pace (mm:ss/km) instead of exercise/set counts.
+    run_card_start = html.index('href="/history/history-run"')
+    run_card_end = html.index('href="/history/history-strength"')
+    run_card_html = html[run_card_start:run_card_end]
+    assert "Distance" in run_card_html and "5.0 km" in run_card_html
+    assert "Pace" in run_card_html and "6:24/km" in run_card_html
+    assert "Exercises" not in run_card_html
+    # Strength cards surface Big 3 est. 1RM, intensity, and total weight moved.
+    strength_card_start = html.index('href="/history/history-strength"')
+    strength_card_end = html.index('data-delete-workout="history-strength"')
+    strength_card_html = html[strength_card_start:strength_card_end]
+    assert "Est. 1RM" in strength_card_html and "96.25 kg" in strength_card_html
+    assert "Intensity" in strength_card_html
+    assert "Total weight" in strength_card_html and "1292.5 kg" in strength_card_html
     assert 'data-delete-workout="history-run"' in html
     assert 'id="history-delete-modal"' in html
 
@@ -193,8 +211,10 @@ def test_history_detail_page_renders_summary_and_ordered_sets(client, app):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     assert "Heavy bench day" in html
-    assert "Exercises" in html
-    assert "Sets" in html
+    assert "Est. 1RM" in html
+    assert "96.25 kg" in html
+    assert "Total weight" in html
+    assert "1292.5 kg" in html
     bench_index = html.index("1. Bench Press")
     row_index = html.index("2. Bench Press")
     bent_index = html.index("3. Bent Over Row")

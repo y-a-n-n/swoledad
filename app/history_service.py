@@ -3,8 +3,11 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
+from .analytics_service import BIG3_NAMES
 from .set_service import list_sets
 from .workout_service import get_workout_payload
+
+_BIG3_SQL_IN = ", ".join(f"'{name}'" for name in BIG3_NAMES.values())
 
 
 def get_history_payload(connection: sqlite3.Connection) -> dict[str, list[dict[str, Any]]]:
@@ -13,7 +16,7 @@ def get_history_payload(connection: sqlite3.Connection) -> dict[str, list[dict[s
 
 def list_history_rows(connection: sqlite3.Connection) -> list[dict[str, Any]]:
     rows = connection.execute(
-        """
+        f"""
         SELECT
           w.id,
           w.type,
@@ -25,6 +28,21 @@ def list_history_rows(connection: sqlite3.Connection) -> list[dict[str, Any]]:
           w.source,
           COUNT(ws.id) AS set_count,
           COUNT(DISTINCT ws.exercise_name) AS exercise_count,
+          (
+            SELECT COALESCE(SUM(ws2.weight_kg * ws2.reps), 0)
+            FROM workout_sets ws2
+            WHERE ws2.workout_id = w.id
+              AND ws2.weight_kg IS NOT NULL
+              AND ws2.reps IS NOT NULL
+          ) AS total_weight_moved_kg,
+          (
+            SELECT MAX(ROUND(ws3.weight_kg * (1.0 + CAST(ws3.reps AS REAL) / 30.0), 2))
+            FROM workout_sets ws3
+            WHERE ws3.workout_id = w.id
+              AND ws3.exercise_name IN ({_BIG3_SQL_IN})
+              AND ws3.weight_kg IS NOT NULL
+              AND ws3.reps IS NOT NULL
+          ) AS big3_estimated_1rm_kg,
           ea.id AS external_activity_id,
           ea.provider,
           ea.provider_activity_id,
@@ -92,6 +110,16 @@ def _serialize_history_row(row: sqlite3.Row) -> dict[str, Any]:
                 row["calories"], row["duration_seconds"]
             ),
         }
+    tw = row["total_weight_moved_kg"]
+    tw_out: float | None
+    if tw is None:
+        tw_out = None
+    else:
+        tw_out = round(float(tw), 1)
+
+    big3 = row["big3_estimated_1rm_kg"]
+    big3_out: float | None = None if big3 is None else float(big3)
+
     return {
         "id": row["id"],
         "type": row["type"],
@@ -103,6 +131,8 @@ def _serialize_history_row(row: sqlite3.Row) -> dict[str, Any]:
         "source": row["source"],
         "set_count": row["set_count"],
         "exercise_count": row["exercise_count"],
+        "total_weight_moved_kg": tw_out,
+        "big3_estimated_1rm_kg": big3_out,
         "linked_external_metrics": linked_external_metrics,
     }
 

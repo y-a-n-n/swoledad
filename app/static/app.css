@@ -815,6 +815,10 @@ body.modal-open {
   background: var(--surface-container-high);
 }
 
+.history-stats-grid--strength {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
 .run-metrics-card .history-stats-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }

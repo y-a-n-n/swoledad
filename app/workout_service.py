@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from http import HTTPStatus
 from typing import Any
 
+from .analytics_service import compute_strength_summary_from_sets
 from .db import execute_write
 from .set_service import list_sets
 from .time_utils import utc_now
@@ -76,6 +77,7 @@ def get_workout_payload(connection: sqlite3.Connection, workout_id: str) -> dict
     ).fetchone()
     if row is None:
         raise LookupError("workout not found")
+    sets = list_sets(connection, workout_id)
     external = connection.execute(
         """
         SELECT
@@ -104,7 +106,8 @@ def get_workout_payload(connection: sqlite3.Connection, workout_id: str) -> dict
         "source": row["source"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
-        "sets": list_sets(connection, workout_id),
+        "sets": sets,
+        "strength_summary": compute_strength_summary_from_sets(sets) if row["type"] == "strength" else None,
         "linked_external_metrics": (
             {
                 "external_activity_id": external["id"],

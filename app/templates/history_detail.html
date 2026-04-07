@@ -21,16 +21,45 @@
         {% endif %}
       </div>
       {% if not is_run %}
-        <div class="history-stats-grid">
-          <div class="number-band">
-            <span class="metric-label">Exercises</span>
-            <strong>{{ workout.sets|map(attribute='exercise_name')|unique|list|length }}</strong>
+        {% if workout.type == "strength" and workout.strength_summary %}
+          <div class="history-stats-grid history-stats-grid--strength">
+            <div class="number-band">
+              <span class="metric-label">Est. 1RM</span>
+              <strong>
+                {% if workout.strength_summary.big3_estimated_1rm_kg is not none %}
+                  {{ workout.strength_summary.big3_estimated_1rm_kg }} kg
+                {% else %}
+                  —
+                {% endif %}
+              </strong>
+            </div>
+            <div class="number-band">
+              <span class="metric-label">Intensity</span>
+              <strong>
+                {% if workout.linked_external_metrics and workout.linked_external_metrics.calories_per_minute is not none %}
+                  {{ workout.linked_external_metrics.calories_per_minute }} cal/min
+                {% else %}
+                  —
+                {% endif %}
+              </strong>
+            </div>
+            <div class="number-band">
+              <span class="metric-label">Total weight</span>
+              <strong>{{ workout.strength_summary.total_weight_moved_kg }} kg</strong>
+            </div>
           </div>
-          <div class="number-band">
-            <span class="metric-label">Sets</span>
-            <strong>{{ workout.sets|length }}</strong>
+        {% else %}
+          <div class="history-stats-grid">
+            <div class="number-band">
+              <span class="metric-label">Exercises</span>
+              <strong>{{ workout.sets|map(attribute='exercise_name')|unique|list|length }}</strong>
+            </div>
+            <div class="number-band">
+              <span class="metric-label">Sets</span>
+              <strong>{{ workout.sets|length }}</strong>
+            </div>
           </div>
-        </div>
+        {% endif %}
       {% endif %}
       {% if workout.notes %}
         <section class="card">

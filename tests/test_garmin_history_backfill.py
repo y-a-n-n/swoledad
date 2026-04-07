@@ -200,6 +200,35 @@ def test_backfill_auto_links_strong_match_and_leaves_ambiguous_pending(app):
     ]
 
 
+def test_backfill_dry_run_auto_links_naive_gmt_timestamp_payloads(app):
+    adapter = RecordingGarminAdapter(
+        windows={
+            ("2023-07-01", "2023-07-01"): [
+                _activity(
+                    activity_id="strong",
+                    started_at="2023-07-01 23:26:26",
+                    ended_at="2023-07-01 23:57:06",
+                ),
+            ],
+        }
+    )
+    app.config["GARMIN_ADAPTER_FACTORY"] = lambda: adapter
+    _seed_workout(app, "run-1", "run", "2023-07-01T23:28:19Z", "2023-07-01T23:57:32Z")
+
+    with app.app_context():
+        from app.db import get_db
+
+        result = run_garmin_history_backfill(
+            get_db(),
+            app.config,
+            BackfillOptions(start_date="2023-07-01", end_date="2023-07-01", window_days=1, sleep_seconds=0, dry_run=True),
+        )
+
+    assert result["counts"]["auto_linked"] == 1
+    assert result["counts"]["pending_review"] == 0
+    assert result["dry_run_report"]["linked"][0]["linked_workout_id"] == "run-1"
+
+
 def test_backfill_failure_records_state_and_stops(app):
     from app.garmin_adapter import GarminNetworkError
 
@@ -231,7 +260,7 @@ def test_backfill_dry_run_reports_ambiguous_and_unlinked_rows(app):
         windows={
             ("2026-03-28", "2026-03-28"): [
                 _activity(activity_id="ambiguous", started_at="2026-03-28T12:00:00Z", ended_at="2026-03-28T12:30:00Z"),
-                _activity(activity_id="unlinked", started_at="2026-03-28T16:00:00Z", ended_at="2026-03-28T16:30:00Z"),
+                _activity(activity_id="unlinked", started_at="2026-03-28T17:00:00Z", ended_at="2026-03-28T17:30:00Z"),
             ],
         }
     )
