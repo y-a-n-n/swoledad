@@ -15,7 +15,7 @@
           <div class="section-header">
             <div>
               <h2>{{ item.type|replace('_', ' ')|title }}</h2>
-              <p class="muted">{{ item.started_at }}</p>
+              <p class="muted">{{ item.started_at|display_datetime }}</p>
             </div>
             <span class="pill">Open</span>
           </div>

@@ -55,7 +55,7 @@
               <div class="analytics-list">
                 {% for item in items %}
                   <div class="analytics-row">
-                    <span>{{ item.started_at }}</span>
+                    <span>{{ item.started_at|display_datetime }}</span>
                     <span>{{ item.estimated_1rm }} kg</span>
                   </div>
                 {% endfor %}
@@ -94,7 +94,7 @@
             <div class="analytics-list">
               {% for item in analytics.calories_per_minute_trend %}
                 <div class="analytics-row">
-                  <span>{{ item.started_at }}</span>
+                  <span>{{ item.started_at|display_datetime }}</span>
                   <span>{{ item.calories_per_minute }} cal/min</span>
                 </div>
               {% endfor %}

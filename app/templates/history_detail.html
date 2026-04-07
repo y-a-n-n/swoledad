@@ -3,29 +3,35 @@
 {% block topbar_meta %}Read-Only Session{% endblock %}
 {% block content %}
   <section class="history-detail-layout">
+    {% set is_run = workout.type in ["run", "running"] or (workout.linked_external_metrics and workout.linked_external_metrics.activity_type == "running") %}
     <section class="history-detail-hero">
       <p class="eyebrow">Workout History</p>
       <h1 class="display-title">{{ workout.type|replace('_', ' ')|title }}</h1>
+      <div>
+        <a class="button soft-button" href="/history">Back to history</a>
+      </div>
       <div class="pill-row">
         <span class="pill">{{ workout.status|title }}</span>
-        <span class="pill">Started: {{ workout.started_at }}</span>
+        <span class="pill">Started: {{ workout.started_at|display_datetime }}</span>
         {% if workout.ended_at %}
-          <span class="pill">Ended: {{ workout.ended_at }}</span>
+          <span class="pill">Ended: {{ workout.ended_at|display_datetime }}</span>
         {% endif %}
         {% if workout.feeling_score %}
           <span class="pill">Feels: {{ workout.feeling_score }}/5</span>
         {% endif %}
       </div>
-      <div class="history-stats-grid">
-        <div class="number-band">
-          <span class="metric-label">Exercises</span>
-          <strong>{{ workout.sets|map(attribute='exercise_name')|unique|list|length }}</strong>
+      {% if not is_run %}
+        <div class="history-stats-grid">
+          <div class="number-band">
+            <span class="metric-label">Exercises</span>
+            <strong>{{ workout.sets|map(attribute='exercise_name')|unique|list|length }}</strong>
+          </div>
+          <div class="number-band">
+            <span class="metric-label">Sets</span>
+            <strong>{{ workout.sets|length }}</strong>
+          </div>
         </div>
-        <div class="number-band">
-          <span class="metric-label">Sets</span>
-          <strong>{{ workout.sets|length }}</strong>
-        </div>
-      </div>
+      {% endif %}
       {% if workout.notes %}
         <section class="card">
           <div class="section-header">
@@ -35,17 +41,31 @@
         </section>
       {% endif %}
       {% if workout.linked_external_metrics %}
-        <section class="card">
+        <section class="card {% if is_run %}run-metrics-card{% endif %}">
           <div class="section-header">
             <h2>Linked External Metrics</h2>
           </div>
-          <div class="pill-row">
+          <div class="{% if is_run %}history-stats-grid{% else %}pill-row{% endif %}">
             <span class="pill">{{ workout.linked_external_metrics.activity_type|replace('_', ' ')|title }}</span>
             {% if workout.linked_external_metrics.distance_meters is not none %}
-              <span class="pill">{{ workout.linked_external_metrics.distance_meters }} m</span>
+              {% if is_run %}
+                <div class="number-band">
+                  <span class="metric-label">Distance</span>
+                  <strong>{{ (workout.linked_external_metrics.distance_meters / 1000)|round(1) }} km</strong>
+                </div>
+              {% else %}
+                <span class="pill">{{ workout.linked_external_metrics.distance_meters }} m</span>
+              {% endif %}
             {% endif %}
             {% if workout.linked_external_metrics.duration_seconds is not none %}
-              <span class="pill">{{ workout.linked_external_metrics.duration_seconds }} sec</span>
+              {% if is_run %}
+                <div class="number-band">
+                  <span class="metric-label">Duration</span>
+                  <strong>{{ workout.linked_external_metrics.duration_seconds|mmss }}</strong>
+                </div>
+              {% else %}
+                <span class="pill">{{ workout.linked_external_metrics.duration_seconds }} sec</span>
+              {% endif %}
             {% endif %}
             {% if workout.linked_external_metrics.avg_heart_rate is not none %}
               <span class="pill">Avg HR: {{ workout.linked_external_metrics.avg_heart_rate }}</span>
@@ -54,7 +74,14 @@
               <span class="pill">Max HR: {{ workout.linked_external_metrics.max_heart_rate }}</span>
             {% endif %}
             {% if workout.linked_external_metrics.pace_seconds_per_km is not none %}
-              <span class="pill">Pace: {{ workout.linked_external_metrics.pace_seconds_per_km }}</span>
+              {% if is_run %}
+                <div class="number-band">
+                  <span class="metric-label">Pace</span>
+                  <strong>{{ workout.linked_external_metrics.pace_seconds_per_km|mmss }}/km</strong>
+                </div>
+              {% else %}
+                <span class="pill">Pace: {{ workout.linked_external_metrics.pace_seconds_per_km }}</span>
+              {% endif %}
             {% endif %}
             {% if workout.linked_external_metrics.calories_per_minute is not none %}
               <span class="pill">Cal/min: {{ workout.linked_external_metrics.calories_per_minute }}</span>
@@ -64,36 +91,37 @@
       {% endif %}
     </section>
 
-    <section class="card">
-      <div class="section-header">
-        <h2>Exercise Log</h2>
-        <a class="button soft-button" href="/history">Back to history</a>
-      </div>
-      {% if workout.sets %}
-        <div class="history-set-list">
-          {% for item in workout.sets %}
-            <article class="set-row">
-              <strong>{{ item.sequence_index + 1 }}. {{ item.exercise_name }}</strong>
-              <span class="muted">
-                {% if item.weight_kg is not none %}
-                  {{ item.weight_kg }} kg
-                {% else %}
-                  Bodyweight
-                {% endif %}
-                {% if item.reps is not none %}
-                  · {{ item.reps }} reps
-                {% endif %}
-                {% if item.duration_seconds is not none %}
-                  · {{ item.duration_seconds }} sec
-                {% endif %}
-                · {{ item.set_type }}
-              </span>
-            </article>
-          {% endfor %}
+    {% if not is_run %}
+      <section class="card">
+        <div class="section-header">
+          <h2>Exercise Log</h2>
         </div>
-      {% else %}
-        <p class="page-copy">No sets were recorded for this workout.</p>
-      {% endif %}
-    </section>
+        {% if workout.sets %}
+          <div class="history-set-list">
+            {% for item in workout.sets %}
+              <article class="set-row">
+                <strong>{{ item.sequence_index + 1 }}. {{ item.exercise_name }}</strong>
+                <span class="muted">
+                  {% if item.weight_kg is not none %}
+                    {{ item.weight_kg }} kg
+                  {% else %}
+                    Bodyweight
+                  {% endif %}
+                  {% if item.reps is not none %}
+                    · {{ item.reps }} reps
+                  {% endif %}
+                  {% if item.duration_seconds is not none %}
+                    · {{ item.duration_seconds }} sec
+                  {% endif %}
+                  · {{ item.set_type }}
+                </span>
+              </article>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="page-copy">No sets were recorded for this workout.</p>
+        {% endif %}
+      </section>
+    {% endif %}
   </section>
 {% endblock %}

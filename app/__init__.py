@@ -12,6 +12,7 @@ from .db import close_db, get_db, init_app as init_db_app, initialize_database
 from .routes_config import config_bp
 from .routes_pages import pages_bp
 from .routes_workouts import workouts_bp
+from .time_utils import format_display_datetime, format_minutes_seconds
 
 
 def create_app(test_config: dict | None = None) -> Flask:
@@ -41,6 +42,8 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.register_blueprint(config_bp)
     app.register_blueprint(pages_bp)
     app.register_blueprint(workouts_bp)
+    app.jinja_env.filters["display_datetime"] = format_display_datetime
+    app.jinja_env.filters["mmss"] = format_minutes_seconds
 
     with app.app_context():
         initialize_database(get_db())

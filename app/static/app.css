@@ -390,18 +390,21 @@ th,
 
 .hero-start button[type="submit"] {
   width: 100%;
-  min-height: min(48vh, 24rem);
+  min-height: min(24vh, 12rem);
   justify-content: flex-end;
   align-items: flex-start;
   padding: 1.5rem;
   background: var(--accent);
   color: var(--on-accent);
   text-align: left;
+  overflow: hidden;
 }
 
 .hero-button-copy {
   display: block;
   font-size: clamp(3.5rem, 13vw, 8rem);
+  max-width: 100%;
+  line-height: 0.8;
 }
 
 .hero-grid .card,
@@ -741,6 +744,14 @@ textarea {
   gap: 1px;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   background: var(--surface-container-high);
+}
+
+.run-metrics-card .history-stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.run-metrics-card .number-band strong {
+  font-size: clamp(2.6rem, 8vw, 4.25rem);
 }
 
 .analytics-big3 {

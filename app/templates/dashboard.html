@@ -50,7 +50,7 @@
           <div class="resume-band">
             <span class="metric-label">Server Draft</span>
             <strong>{{ dashboard.active_draft.type|replace('_', ' ')|title }}</strong>
-            <span class="muted">{{ dashboard.active_draft.started_at }}</span>
+            <span class="muted">{{ dashboard.active_draft.started_at|display_datetime }}</span>
           </div>
           <a class="button" href="/workouts/{{ dashboard.active_draft.workout_id }}">Resume current draft</a>
         {% else %}
@@ -99,7 +99,7 @@
         {% for item in dashboard.pending_imports %}
           <div class="list-item" data-external-id="{{ item.id }}">
             <strong>{{ item.activity_type|replace('_', ' ')|title }}</strong>
-            <p>{{ item.started_at }}</p>
+            <p>{{ item.started_at|display_datetime }}</p>
             <div class="pill-row">
               <span class="pill">{{ item.distance_meters or 0 }} m</span>
               <span class="pill">{{ item.duration_seconds or 0 }} sec</span>
@@ -111,7 +111,7 @@
                 <select class="link-workout-id">
                   {% for workout in item.candidate_workouts %}
                     <option value="{{ workout.id }}" {% if workout.id == item.suggested_workout_id %}selected{% endif %}>
-                      {{ workout.type|replace('_', ' ')|title }} · {{ workout.status|title }} · {{ workout.started_at }}
+                      {{ workout.type|replace('_', ' ')|title }} · {{ workout.status|title }} · {{ workout.started_at|display_datetime }}
                     </option>
                   {% endfor %}
                 </select>
@@ -139,7 +139,7 @@
         {% for item in dashboard.accepted_runs %}
           <article class="list-item accepted-run-card" data-workout-id="{{ item.workout_id }}">
             <strong>{{ item.activity_type|replace('_', ' ')|title }}</strong>
-            <p>{{ item.started_at }}</p>
+            <p>{{ item.started_at|display_datetime }}</p>
             <div class="pill-row">
               <span class="pill">{{ item.distance_meters or 0 }} m</span>
               <span class="pill">{{ item.duration_seconds or 0 }} sec</span>

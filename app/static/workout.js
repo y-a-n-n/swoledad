@@ -6,6 +6,27 @@ function formatWorkoutType(value) {
     .join(" ");
 }
 
+function formatDisplayDate(value) {
+  if (!value) {
+    return "";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value);
+  }
+  const formatter = new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const parts = Object.fromEntries(formatter.formatToParts(parsed).map((part) => [part.type, part.value]));
+  return `${parts.weekday}, ${parts.month} ${parts.day}, ${parts.year} at ${parts.hour}:${parts.minute}`;
+}
+
 async function loadWorkoutShell() {
   const shell = document.getElementById("workout-shell");
   if (!shell || !window.__workoutPage) {
@@ -34,7 +55,7 @@ async function loadWorkoutShell() {
         </div>
         <div class="shell-tile">
           <strong>Started</strong>
-          <span>${localDraft.started_at}</span>
+          <span>${formatDisplayDate(localDraft.started_at)}</span>
         </div>
         <div class="shell-tile">
           <strong>Writes pending</strong>
@@ -59,7 +80,7 @@ async function loadWorkoutShell() {
         </div>
         <div class="shell-tile">
           <strong>Started</strong>
-          <span>${serverWorkout.started_at}</span>
+          <span>${formatDisplayDate(serverWorkout.started_at)}</span>
         </div>
         <div class="shell-tile">
           <strong>Mode</strong>
@@ -115,7 +136,7 @@ async function refreshWorkout() {
           </div>
           <div class="shell-tile">
             <strong>Started</strong>
-            <span>${draft.started_at}</span>
+            <span>${formatDisplayDate(draft.started_at)}</span>
           </div>
           <div class="shell-tile">
             <strong>Writes pending</strong>
