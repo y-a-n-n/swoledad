@@ -3,9 +3,12 @@ from __future__ import annotations
 import pytest
 
 from app.reconciliation_service import (
+    BACKFILL_COMPATIBLE_WORKOUT_TYPES,
     COMPATIBLE_WORKOUT_TYPES,
     accept_external_activity,
+    choose_backfill_auto_link_candidate,
     dismiss_external_activity,
+    score_backfill_candidates,
     find_candidate_workouts,
     link_external_activity,
     reconcile_external_activity,
@@ -60,6 +63,26 @@ def sync_one(client, app, activity):
 def test_compatibility_mapping_rules():
     assert COMPATIBLE_WORKOUT_TYPES["running"] == {"run", "cross_training"}
     assert COMPATIBLE_WORKOUT_TYPES["strength"] == {"strength"}
+    assert BACKFILL_COMPATIBLE_WORKOUT_TYPES["indoor_cardio"] == {"strength"}
+
+
+def test_backfill_scoring_allows_wide_start_and_end_time_deltas():
+    activity = {
+        "activity_type": "running",
+        "started_at": "2023-07-01T23:26:26Z",
+        "ended_at": "2023-07-01T23:57:06Z",
+    }
+    candidates = [
+        {
+            "id": "run-1",
+            "type": "run",
+            "started_at": "2023-07-02T00:02:19Z",
+            "ended_at": "2023-07-02T00:32:32Z",
+        }
+    ]
+    scored = score_backfill_candidates(activity, candidates)
+    assert scored[0]["match_score"] >= 70
+    assert choose_backfill_auto_link_candidate(activity, candidates)["id"] == "run-1"
 
 
 def test_candidate_matching_within_and_outside_window(client, app):

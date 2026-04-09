@@ -12,11 +12,18 @@ AUTO_LINK_WINDOW_MINUTES = 15
 BACKFILL_CANDIDATE_WINDOW_MINUTES = 240
 BACKFILL_AUTO_LINK_MIN_SCORE = 70
 BACKFILL_MIN_SCORE_MARGIN = 20
+BACKFILL_START_STRONG_WINDOW_MINUTES = 240
+BACKFILL_END_STRONG_WINDOW_MINUTES = 480
 
 COMPATIBLE_WORKOUT_TYPES = {
     "running": {"run", "cross_training"},
     "cycling": {"cross_training"},
     "strength": {"strength"},
+}
+
+BACKFILL_COMPATIBLE_WORKOUT_TYPES = {
+    **COMPATIBLE_WORKOUT_TYPES,
+    "indoor_cardio": {"strength"},
 }
 
 ACCEPTABLE_OVERRIDE_TYPES = {"run", "cross_training"}
@@ -50,7 +57,13 @@ def reconcile_external_activity_for_backfill(
     candidates = find_candidate_workouts_for_backfill(connection, external_activity_id)
     best = choose_backfill_auto_link_candidate(activity, candidates)
     if best is not None:
-        return link_external_activity(connection, external_activity_id, best["id"], commit=commit)
+        return link_external_activity(
+            connection,
+            external_activity_id,
+            best["id"],
+            commit=commit,
+            compatibility_map=BACKFILL_COMPATIBLE_WORKOUT_TYPES,
+        )
     execute_write(
         connection,
         "UPDATE external_activities SET status = 'pending_review', updated_at = ? WHERE id = ?",
@@ -89,6 +102,7 @@ def find_candidate_workouts_for_backfill(
         dict(activity),
         window_minutes=BACKFILL_CANDIDATE_WINDOW_MINUTES,
         exclude_linked=True,
+        compatibility_map=BACKFILL_COMPATIBLE_WORKOUT_TYPES,
     )
 
 
@@ -98,8 +112,9 @@ def find_candidate_workouts_for_activity(
     *,
     window_minutes: int,
     exclude_linked: bool,
+    compatibility_map: dict[str, set[str]] = COMPATIBLE_WORKOUT_TYPES,
 ) -> list[dict[str, Any]]:
-    allowed_types = COMPATIBLE_WORKOUT_TYPES.get(activity["activity_type"], {"run"})
+    allowed_types = compatibility_map.get(activity["activity_type"], {"run"})
     started_at = _parse_iso(activity["started_at"])
     window_start = _to_iso(started_at - timedelta(minutes=window_minutes))
     window_end = _to_iso(started_at + timedelta(minutes=window_minutes))
@@ -195,12 +210,13 @@ def link_external_activity(
     workout_id: str,
     *,
     commit: bool = True,
+    compatibility_map: dict[str, set[str]] = COMPATIBLE_WORKOUT_TYPES,
 ) -> dict[str, Any]:
     activity = _load_external_activity(connection, external_activity_id)
     if activity["linked_workout_id"] == workout_id:
         return _serialize_external_activity(activity)
     workout = _load_workout(connection, workout_id)
-    if workout["type"] not in COMPATIBLE_WORKOUT_TYPES.get(activity["activity_type"], set()):
+    if workout["type"] not in compatibility_map.get(activity["activity_type"], set()):
         raise ValueError("target workout type is incompatible")
     existing = connection.execute(
         """
@@ -245,7 +261,7 @@ def score_backfill_candidates(
     activity: sqlite3.Row | dict[str, Any], candidates: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
     payload = dict(activity)
-    scored = [{**candidate, "match_score": _score_candidate(payload, candidate)} for candidate in candidates]
+    scored = [{**candidate, "match_score": _score_candidate(payload, candidate, backfill=True)} for candidate in candidates]
     scored.sort(
         key=lambda item: (
             -item["match_score"],
@@ -309,9 +325,10 @@ def _serialize_external_activity(row: sqlite3.Row) -> dict[str, Any]:
     }
 
 
-def _score_candidate(activity: dict[str, Any], candidate: dict[str, Any]) -> int:
+def _score_candidate(activity: dict[str, Any], candidate: dict[str, Any], *, backfill: bool = False) -> int:
     score = 0
-    if candidate["type"] not in COMPATIBLE_WORKOUT_TYPES.get(activity["activity_type"], set()):
+    compatibility_map = BACKFILL_COMPATIBLE_WORKOUT_TYPES if backfill else COMPATIBLE_WORKOUT_TYPES
+    if candidate["type"] not in compatibility_map.get(activity["activity_type"], set()):
         return -999
 
     if activity["activity_type"] == "running" and candidate["type"] == "run":
@@ -320,22 +337,31 @@ def _score_candidate(activity: dict[str, Any], candidate: dict[str, Any]) -> int
         score += 30
     elif activity["activity_type"] == "strength" and candidate["type"] == "strength":
         score += 30
+    elif activity["activity_type"] == "indoor_cardio" and candidate["type"] == "strength":
+        score += 30
 
     start_delta_seconds = abs((_parse_iso(candidate["started_at"]) - _parse_iso(activity["started_at"])).total_seconds())
-    if start_delta_seconds <= 5 * 60:
-        score += 60
-    elif start_delta_seconds <= 15 * 60:
-        score += 40
-    elif start_delta_seconds <= 30 * 60:
-        score += 25
-    elif start_delta_seconds <= 60 * 60:
-        score += 10
+    if backfill:
+        if start_delta_seconds <= BACKFILL_START_STRONG_WINDOW_MINUTES * 60:
+            score += 40
+    else:
+        if start_delta_seconds <= 5 * 60:
+            score += 60
+        elif start_delta_seconds <= 15 * 60:
+            score += 40
+        elif start_delta_seconds <= 30 * 60:
+            score += 25
+        elif start_delta_seconds <= 60 * 60:
+            score += 10
 
     candidate_ended_at = candidate.get("ended_at")
     activity_ended_at = activity.get("ended_at")
     if candidate_ended_at and activity_ended_at:
         end_delta_seconds = abs((_parse_iso(candidate_ended_at) - _parse_iso(activity_ended_at)).total_seconds())
-        if end_delta_seconds <= 10 * 60:
+        if backfill:
+            if end_delta_seconds <= BACKFILL_END_STRONG_WINDOW_MINUTES * 60:
+                score += 20
+        elif end_delta_seconds <= 10 * 60:
             score += 25
 
         candidate_duration_seconds = abs(

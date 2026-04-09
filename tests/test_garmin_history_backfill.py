@@ -41,6 +41,13 @@ def _activity(activity_id="123456", started_at="2026-03-28T10:00:00Z", ended_at=
     }
 
 
+def _indoor_cardio_activity(activity_id="indoor-1", started_at="2026-03-28T10:00:00Z", ended_at="2026-03-28T11:00:00Z"):
+    payload = _activity(activity_id=activity_id, started_at=started_at, ended_at=ended_at)
+    payload["activityType"] = {"typeKey": "indoor_cardio"}
+    payload["duration"] = 3600
+    return payload
+
+
 def _seed_workout(app, workout_id: str, workout_type: str, started_at: str, ended_at: str | None = None):
     with app.app_context():
         from app.db import get_db
@@ -281,6 +288,38 @@ def test_backfill_dry_run_reports_ambiguous_and_unlinked_rows(app):
     assert result["counts"]["pending_review"] == 2
     assert [item["provider_activity_id"] for item in result["dry_run_report"]["ambiguous"]] == ["ambiguous"]
     assert [item["provider_activity_id"] for item in result["dry_run_report"]["unlinked"]] == ["unlinked"]
+
+
+def test_backfill_auto_links_indoor_cardio_to_strength_workout(app):
+    adapter = RecordingGarminAdapter(
+        windows={
+            ("2026-03-28", "2026-03-28"): [
+                _indoor_cardio_activity(
+                    activity_id="indoor-strong",
+                    started_at="2026-03-28T10:00:00Z",
+                    ended_at="2026-03-28T11:00:00Z",
+                ),
+            ],
+        }
+    )
+    app.config["GARMIN_ADAPTER_FACTORY"] = lambda: adapter
+    _seed_workout(app, "strength-1", "strength", "2026-03-28T13:30:00Z", "2026-03-28T18:30:00Z")
+
+    with app.app_context():
+        from app.db import get_db
+
+        result = run_garmin_history_backfill(
+            get_db(),
+            app.config,
+            BackfillOptions(start_date="2026-03-28", end_date="2026-03-28", window_days=1, sleep_seconds=0),
+        )
+        row = get_db().execute(
+            "SELECT status, linked_workout_id FROM external_activities WHERE provider_activity_id = 'indoor-strong'"
+        ).fetchone()
+
+    assert result["counts"]["auto_linked"] == 1
+    assert row["status"] == "linked"
+    assert row["linked_workout_id"] == "strength-1"
 
 
 def test_backfill_database_failure_records_state_and_stops(app, monkeypatch):

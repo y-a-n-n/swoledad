@@ -19,6 +19,7 @@ from .garmin_adapter import (
 )
 from .reconciliation_service import (
     BACKFILL_CANDIDATE_WINDOW_MINUTES,
+    BACKFILL_COMPATIBLE_WORKOUT_TYPES,
     choose_backfill_auto_link_candidate,
     find_candidate_workouts_for_activity,
     reconcile_external_activity_for_backfill,
@@ -357,6 +358,7 @@ def _build_dry_run_activity_report(connection: sqlite3.Connection, activity: dic
         activity,
         window_minutes=BACKFILL_CANDIDATE_WINDOW_MINUTES,
         exclude_linked=True,
+        compatibility_map=BACKFILL_COMPATIBLE_WORKOUT_TYPES,
     )
     scored = score_backfill_candidates(activity, candidates)
     best = choose_backfill_auto_link_candidate(activity, candidates)
