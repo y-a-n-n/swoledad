@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sqlite3
 import time
 from dataclasses import dataclass
@@ -29,7 +30,9 @@ from .time_utils import utc_now
 
 BACKFILL_STATE_KEY = "garmin_history_backfill_state"
 DEFAULT_WINDOW_DAYS = 7
-DEFAULT_SLEEP_SECONDS = 45.0
+DEFAULT_SLEEP_SECONDS = 30.0
+DEFAULT_SLEEP_JITTER_MIN_SECONDS = 1.0
+DEFAULT_SLEEP_JITTER_MAX_SECONDS = 3.0
 DEFAULT_BACKOFF_SECONDS = 300.0
 
 
@@ -181,7 +184,7 @@ def _process_windows(
                 sleep_fn(options.backoff_seconds)
             break
         if summary["next_start_date"] <= summary["end_date"] and options.sleep_seconds > 0:
-            sleep_fn(options.sleep_seconds)
+            sleep_fn(_calculate_success_sleep_seconds(options.sleep_seconds))
     if summary.get("status") != "failed":
         summary["status"] = "completed" if summary["next_start_date"] > summary["end_date"] else "paused"
         summary["updated_at"] = utc_now()
@@ -322,6 +325,11 @@ def _save_backfill_state(connection: sqlite3.Connection, state: dict[str, Any]) 
         """,
         (BACKFILL_STATE_KEY, json.dumps(state, sort_keys=True)),
     )
+
+
+def _calculate_success_sleep_seconds(base_seconds: float) -> float:
+    jitter_seconds = random.uniform(DEFAULT_SLEEP_JITTER_MIN_SECONDS, DEFAULT_SLEEP_JITTER_MAX_SECONDS)
+    return base_seconds + jitter_seconds
 
 
 def _build_dry_run_activity_report(connection: sqlite3.Connection, activity: dict[str, Any]) -> dict[str, Any]:

@@ -146,6 +146,28 @@ def test_backfill_resume_uses_saved_cursor(app):
     assert second_adapter.calls == [("2026-03-08T00:00:00Z", "2026-03-14T23:59:59Z")]
 
 
+def test_backfill_adds_jitter_to_successful_window_sleep(app, monkeypatch):
+    adapter = RecordingGarminAdapter()
+    app.config["GARMIN_ADAPTER_FACTORY"] = lambda: adapter
+    _seed_workout(app, "w1", "run", "2024-01-03T10:00:00Z", "2024-01-03T10:30:00Z")
+    _seed_workout(app, "w2", "run", "2024-01-04T10:00:00Z", "2024-01-04T10:30:00Z")
+    sleeps: list[float] = []
+
+    monkeypatch.setattr("app.garmin_history_backfill.random.uniform", lambda start, end: 2.5)
+
+    with app.app_context():
+        from app.db import get_db
+
+        run_garmin_history_backfill(
+            get_db(),
+            app.config,
+            BackfillOptions(start_date="2024-01-03", end_date="2024-01-04", window_days=1, sleep_seconds=30),
+            sleep_fn=sleeps.append,
+        )
+
+    assert sleeps == [32.5]
+
+
 def test_backfill_is_idempotent_when_repeated(app):
     adapter = RecordingGarminAdapter(
         windows={
