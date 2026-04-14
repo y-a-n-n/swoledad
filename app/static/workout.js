@@ -225,6 +225,8 @@ async function upsertSet(event) {
   });
   await window.workoutDraftStorage.queueOperation(operation);
   await window.workoutDraftStorage.flushQueuedOperations();
+  document.getElementById("set-form").reset();
+  document.getElementById("set-id").value = "";
 }
 
 async function deleteSelectedSet() {
