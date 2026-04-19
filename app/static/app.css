@@ -601,6 +601,10 @@ textarea {
   gap: var(--space-4);
 }
 
+.duration-field[hidden] {
+  display: none;
+}
+
 .workout-primary-form label input,
 .workout-primary-form label select {
   font-family: "Space Grotesk", sans-serif;
@@ -621,6 +625,17 @@ textarea {
   width: 100%;
   min-height: 5.5rem;
   font-size: 1.2rem;
+}
+
+.quick-prefill-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.quick-prefill-actions .prefill-button {
+  width: 100%;
+  padding-inline: 0.5rem;
 }
 
 .rest-panel {
@@ -659,6 +674,11 @@ textarea {
 
 .workout-secondary .details-body {
   padding: 0 var(--space-4) var(--space-4);
+}
+
+.workout-status {
+  display: grid;
+  gap: var(--space-4);
 }
 
 .shell-grid,
@@ -956,5 +976,9 @@ pre {
   .workout-primary-form label input,
   .workout-primary-form label select {
     font-size: clamp(2rem, 14vw, 4rem);
+  }
+
+  .quick-prefill-actions {
+    grid-template-columns: 1fr;
   }
 }

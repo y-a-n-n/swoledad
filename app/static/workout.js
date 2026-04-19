@@ -100,6 +100,24 @@ function currentWorkoutId() {
   return window.__workoutPage?.workoutId;
 }
 
+function shouldShowDurationField(setType) {
+  return setType === "amrap" || setType === "for_time";
+}
+
+function syncSetTypeFields() {
+  const setTypeInput = document.getElementById("set-type");
+  const durationField = document.getElementById("duration-field");
+  const durationInput = document.getElementById("duration-seconds");
+  const repsInput = document.getElementById("reps");
+  if (!setTypeInput || !durationField || !durationInput || !repsInput) {
+    return;
+  }
+  const showDuration = shouldShowDurationField(setTypeInput.value);
+  durationField.hidden = !showDuration;
+  durationInput.required = setTypeInput.value === "for_time";
+  repsInput.required = setTypeInput.value !== "for_time";
+}
+
 function setListItemHtml(item) {
   return `
     <button type="button" class="set-row" data-set-id="${item.id}">
@@ -227,6 +245,8 @@ async function upsertSet(event) {
   await window.workoutDraftStorage.flushQueuedOperations();
   document.getElementById("set-form").reset();
   document.getElementById("set-id").value = "";
+  document.getElementById("set-type").value = "normal";
+  syncSetTypeFields();
 }
 
 async function deleteSelectedSet() {
@@ -252,6 +272,8 @@ async function deleteSelectedSet() {
   await window.workoutDraftStorage.flushQueuedOperations();
   document.getElementById("set-form").reset();
   document.getElementById("set-id").value = "";
+  document.getElementById("set-type").value = "normal";
+  syncSetTypeFields();
 }
 
 async function loadSuggestions() {
@@ -263,7 +285,7 @@ async function loadSuggestions() {
   const payload = await response.json();
   const datalist = document.getElementById("exercise-suggestions");
   datalist.innerHTML = payload.items
-    .map((item) => `<option value="${item.exercise_name}">${item.reason}</option>`)
+    .map((item) => `<option value="${item.exercise_name}"></option>`)
     .join("");
 }
 
@@ -344,6 +366,7 @@ document.getElementById("set-form")?.addEventListener("submit", upsertSet);
 document.getElementById("delete-set")?.addEventListener("click", deleteSelectedSet);
 document.getElementById("exercise-name")?.addEventListener("input", loadSuggestions);
 document.getElementById("weight-kg")?.addEventListener("input", updatePlateLoading);
+document.getElementById("set-type")?.addEventListener("change", syncSetTypeFields);
 document.querySelectorAll(".prefill-button").forEach((button) => {
   button.addEventListener("click", () => {
     void applyPrefill(button.dataset.lift);
@@ -371,6 +394,7 @@ document.getElementById("set-list")?.addEventListener("click", (event) => {
     document.getElementById("weight-kg").value = selected.weight_kg ?? "";
     document.getElementById("reps").value = selected.reps ?? "";
     document.getElementById("duration-seconds").value = selected.duration_seconds ?? "";
+    syncSetTypeFields();
   })();
 });
 
@@ -379,6 +403,7 @@ window.addEventListener("online", () => {
 });
 
 void loadWorkoutShell().then(refreshWorkout).then(renderTimer);
+syncSetTypeFields();
 window.setInterval(() => {
   void renderTimer();
 }, 1000);
