@@ -116,6 +116,64 @@ def test_duplicate_operation_id_does_not_duplicate_mutation(client):
     assert len(workout["sets"]) == 1
 
 
+def test_upsert_set_auto_assigns_sequence_index_within_workout(client):
+    draft = _draft_payload()
+    client.post("/api/workouts/draft", json=draft)
+
+    first = client.put(
+        f"/api/workouts/{draft['workout_id']}/sets/11111111-1111-4111-8111-111111111111",
+        json=_upsert_payload("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", sequence_index=None, exercise_name="Bench Press"),
+    )
+    second = client.put(
+        f"/api/workouts/{draft['workout_id']}/sets/22222222-2222-4222-8222-222222222222",
+        json=_upsert_payload("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", sequence_index=None, exercise_name="Squat"),
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.get_json()["set"]["sequence_index"] == 0
+    assert second.get_json()["set"]["sequence_index"] == 1
+
+
+def test_workout_page_does_not_render_manual_sequence_field(client):
+    draft = _draft_payload()
+    client.post("/api/workouts/draft", json=draft)
+
+    response = client.get(f"/workouts/{draft['workout_id']}")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert 'id="sequence-index"' not in html
+    assert "Sequence" not in html
+
+
+def test_workout_page_repositions_prefill_and_session_status(client):
+    draft = _draft_payload()
+    client.post("/api/workouts/draft", json=draft)
+
+    response = client.get(f"/workouts/{draft['workout_id']}")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    quick_prefill_index = html.index('class="quick-prefill-actions"')
+    save_button_index = html.index('class="workout-save"')
+    plate_loading_index = html.index('id="plate-loading"')
+    session_status_index = html.index("<h2>Session Status</h2>")
+    assert quick_prefill_index < save_button_index
+    assert plate_loading_index < session_status_index
+
+
+def test_workout_page_hides_duration_field_until_time_based_set_selected(client):
+    draft = _draft_payload()
+    client.post("/api/workouts/draft", json=draft)
+
+    response = client.get(f"/workouts/{draft['workout_id']}")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert 'label class="supporting-field duration-field" id="duration-field" hidden' in html
+
+
 def test_suggestion_endpoint_returns_prefix_matches(client, app):
     seed_finalized_history(app)
     response = client.get("/api/exercises/suggestions?query=Be")

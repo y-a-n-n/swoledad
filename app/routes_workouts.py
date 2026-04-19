@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from http import HTTPStatus
+import sqlite3
 
 from flask import Blueprint, current_app, jsonify, request
 
@@ -9,6 +10,7 @@ from .dashboard_service import get_dashboard_payload
 from .db import get_db
 from .external_sync import list_accepted_runs, list_pending_imports, maybe_sync_garmin_activities
 from .finalize_service import finalize_workout
+from .history_service import get_history_payload
 from .analytics_service import get_analytics_payload
 from .garmin_adapter import get_garmin_connection_status
 from .plate_loading import calculate_plate_loading
@@ -20,7 +22,7 @@ from .reconciliation_service import (
 )
 from .set_service import delete_set, upsert_set
 from .suggestions import get_big3_prefill, get_exercise_suggestions
-from .workout_service import create_draft, get_workout_payload, update_workout_reflection
+from .workout_service import create_draft, delete_workout, get_workout_payload, update_workout_reflection
 
 workouts_bp = Blueprint("workouts", __name__)
 
@@ -65,6 +67,19 @@ def post_finalize(workout_id: str):
     return jsonify(result.payload), result.status_code
 
 
+@workouts_bp.delete("/api/workouts/<workout_id>")
+def delete_workout_route(workout_id: str):
+    connection = get_db()
+    try:
+        payload = delete_workout(connection, workout_id)
+    except LookupError as exc:
+        return jsonify({"error": str(exc)}), HTTPStatus.NOT_FOUND
+    except sqlite3.DatabaseError:
+        connection.rollback()
+        return jsonify({"error": "Unable to delete workout"}), HTTPStatus.INTERNAL_SERVER_ERROR
+    return jsonify(payload)
+
+
 @workouts_bp.post("/api/client-operations")
 def post_client_operations():
     payload = request.get_json(silent=True) or {}
@@ -102,6 +117,11 @@ def get_accepted_runs():
 @workouts_bp.get("/api/analytics")
 def get_analytics():
     return jsonify(get_analytics_payload(get_db()))
+
+
+@workouts_bp.get("/api/history")
+def get_history():
+    return jsonify(get_history_payload(get_db()))
 
 
 @workouts_bp.post("/api/external/pending-imports/<external_activity_id>/dismiss")

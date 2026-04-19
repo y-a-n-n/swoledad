@@ -8,13 +8,6 @@
     <section class="workout-hero">
       <p class="eyebrow">Active Workout</p>
       <h1 id="workout-title" class="display-title workout-massive-title">Workout Shell</h1>
-      <div class="section-header" style="margin: 0;">
-        <h2>Session Status</h2>
-        <a id="finalize-link" class="button soft-button" href="/workouts/{{ workout_id }}/summary">Go to summary</a>
-      </div>
-      <div id="workout-shell" class="shell-grid">
-        <p>Loading workout state...</p>
-      </div>
     </section>
 
     <section class="card">
@@ -22,7 +15,7 @@
         <input type="hidden" name="set_id" id="set-id">
         <label>
           Exercise
-          <input type="text" name="exercise_name" id="exercise-name" list="exercise-suggestions" autocomplete="off" placeholder="Squat">
+          <input type="text" name="exercise_name" id="exercise-name" list="exercise-suggestions" placeholder="Squat">
         </label>
         <datalist id="exercise-suggestions"></datalist>
 
@@ -38,10 +31,6 @@
 
         <div class="grid compact">
           <label class="supporting-field">
-            Sequence
-            <input type="number" name="sequence_index" id="sequence-index" value="0" min="0" step="1">
-          </label>
-          <label class="supporting-field">
             Set type
             <select name="set_type" id="set-type">
               <option value="normal">normal</option>
@@ -49,12 +38,17 @@
               <option value="for_time">for_time</option>
             </select>
           </label>
-          <label class="supporting-field">
+          <label class="supporting-field duration-field" id="duration-field" hidden>
             Duration (seconds)
             <input type="number" name="duration_seconds" id="duration-seconds" min="0" step="1">
           </label>
         </div>
 
+        <div class="quick-prefill-actions">
+          <button type="button" class="prefill-button soft-button" data-lift="squat">Squat</button>
+          <button type="button" class="prefill-button soft-button" data-lift="bench_press">Bench Press</button>
+          <button type="button" class="prefill-button soft-button" data-lift="deadlift">Deadlift</button>
+        </div>
         <button type="submit" class="workout-save">Save Set</button>
         <button type="button" id="delete-set" class="soft-button">Delete selected set</button>
       </form>
@@ -79,22 +73,21 @@
       </details>
 
       <details>
-        <summary>Quick Prefill</summary>
-        <div class="details-body">
-          <div class="button-row">
-            <button type="button" class="prefill-button soft-button" data-lift="squat">Squat</button>
-            <button type="button" class="prefill-button soft-button" data-lift="bench_press">Bench Press</button>
-            <button type="button" class="prefill-button soft-button" data-lift="deadlift">Deadlift</button>
-          </div>
-        </div>
-      </details>
-
-      <details>
         <summary>Plate Loading</summary>
         <div class="details-body">
           <div id="plate-loading" class="number-band">Enter a weight to see plate loading.</div>
         </div>
       </details>
+    </section>
+
+    <section class="workout-status card">
+      <div class="section-header" style="margin: 0;">
+        <h2>Session Status</h2>
+        <a id="finalize-link" class="button soft-button" href="/workouts/{{ workout_id }}/summary">Go to summary</a>
+      </div>
+      <div id="workout-shell" class="shell-grid">
+        <p>Loading workout state...</p>
+      </div>
     </section>
   </section>
 {% endblock %}

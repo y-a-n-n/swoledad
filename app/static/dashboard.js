@@ -137,13 +137,13 @@ async function removeDraft(workoutId) {
   });
 }
 
-async function reconcileDraftFromServer(workoutId, appliedStatuses) {
+async function reconcileDraftFromServer(workoutId, appliedStatuses, rejectedStatuses) {
   const draft = await loadDraft(workoutId);
   if (!draft) {
     return;
   }
-  const remainingOperationIds = draft.pending_operation_ids.filter((id) => !appliedStatuses.has(id));
-  if (remainingOperationIds.length === 0 && draft.status === "finalized-pending-sync") {
+  const remainingOperationIds = draft.pending_operation_ids.filter((id) => !appliedStatuses.has(id) && !rejectedStatuses.has(id));
+  if (remainingOperationIds.length === 0 && draft.status === "finalized-pending-sync" && appliedStatuses.size > 0) {
     await removeDraft(workoutId);
     return;
   }
@@ -195,20 +195,24 @@ async function flushQueuedOperations() {
   }
   const payload = await response.json();
   const resolvedOperationIds = new Set();
+  const rejectedOperationIds = new Set();
   const affectedWorkoutIds = new Set();
   for (const ack of payload.acks) {
-    if (ack.status === "applied" || ack.status === "rejected") {
+    if (ack.status === "applied") {
       resolvedOperationIds.add(ack.operation_id);
+      await removeQueuedOperation(ack.operation_id);
+    } else if (ack.status === "rejected") {
+      rejectedOperationIds.add(ack.operation_id);
       await removeQueuedOperation(ack.operation_id);
     }
   }
   for (const operation of operations) {
-    if (resolvedOperationIds.has(operation.operation_id)) {
+    if (resolvedOperationIds.has(operation.operation_id) || rejectedOperationIds.has(operation.operation_id)) {
       affectedWorkoutIds.add(operation.workout_id);
     }
   }
   for (const workoutId of affectedWorkoutIds) {
-    await reconcileDraftFromServer(workoutId, resolvedOperationIds);
+    await reconcileDraftFromServer(workoutId, resolvedOperationIds, rejectedOperationIds);
   }
   return payload.acks.every((ack) => ack.status === "applied");
 }
@@ -219,9 +223,30 @@ function renderResumeCard(draft) {
     return;
   }
   card.innerHTML = `
-    <p>Local draft: ${draft.workout_type.replaceAll("_", " ")} started ${draft.started_at}</p>
+    <p>Local draft: ${draft.workout_type.replaceAll("_", " ")} started ${formatDisplayDate(draft.started_at)}</p>
     <a href="/workouts/${draft.workout_id}">Resume current draft</a>
   `;
+}
+
+function formatDisplayDate(value) {
+  if (!value) {
+    return "";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value);
+  }
+  const formatter = new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const parts = Object.fromEntries(formatter.formatToParts(parsed).map((part) => [part.type, part.value]));
+  return `${parts.weekday}, ${parts.month} ${parts.day}, ${parts.year} at ${parts.hour}:${parts.minute}`;
 }
 
 function titleCaseWords(value) {
@@ -244,7 +269,7 @@ function renderPendingImportCard(item) {
             .map(
               (workout) => `
                 <option value="${workout.id}" ${workout.id === item.suggested_workout_id ? "selected" : ""}>
-                  ${titleCaseWords(workout.type)} · ${titleCaseWords(workout.status)} · ${workout.started_at}
+                  ${titleCaseWords(workout.type)} · ${titleCaseWords(workout.status)} · ${formatDisplayDate(workout.started_at)}
                 </option>
               `,
             )
@@ -260,7 +285,7 @@ function renderPendingImportCard(item) {
   return `
     <div class="list-item" data-external-id="${item.id}">
       <strong>${activityLabel}</strong>
-      <p>${item.started_at}</p>
+      <p>${formatDisplayDate(item.started_at)}</p>
       <div class="pill-row">
         <span class="pill">${distance} m</span>
         <span class="pill">${duration} sec</span>
@@ -295,7 +320,7 @@ function renderAcceptedRunCard(item) {
   return `
     <article class="list-item accepted-run-card" data-workout-id="${item.workout_id}">
       <strong>${titleCaseWords(item.activity_type)}</strong>
-      <p>${item.started_at}</p>
+      <p>${formatDisplayDate(item.started_at)}</p>
       <div class="pill-row">
         <span class="pill">${item.distance_meters ?? 0} m</span>
         <span class="pill">${item.duration_seconds ?? 0} sec</span>

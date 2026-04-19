@@ -6,6 +6,27 @@ function formatWorkoutType(value) {
     .join(" ");
 }
 
+function formatDisplayDate(value) {
+  if (!value) {
+    return "";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value);
+  }
+  const formatter = new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const parts = Object.fromEntries(formatter.formatToParts(parsed).map((part) => [part.type, part.value]));
+  return `${parts.weekday}, ${parts.month} ${parts.day}, ${parts.year} at ${parts.hour}:${parts.minute}`;
+}
+
 async function loadWorkoutShell() {
   const shell = document.getElementById("workout-shell");
   if (!shell || !window.__workoutPage) {
@@ -34,7 +55,7 @@ async function loadWorkoutShell() {
         </div>
         <div class="shell-tile">
           <strong>Started</strong>
-          <span>${localDraft.started_at}</span>
+          <span>${formatDisplayDate(localDraft.started_at)}</span>
         </div>
         <div class="shell-tile">
           <strong>Writes pending</strong>
@@ -59,7 +80,7 @@ async function loadWorkoutShell() {
         </div>
         <div class="shell-tile">
           <strong>Started</strong>
-          <span>${serverWorkout.started_at}</span>
+          <span>${formatDisplayDate(serverWorkout.started_at)}</span>
         </div>
         <div class="shell-tile">
           <strong>Mode</strong>
@@ -77,6 +98,24 @@ const TIMER_KEY_PREFIX = "workout-timer:";
 
 function currentWorkoutId() {
   return window.__workoutPage?.workoutId;
+}
+
+function shouldShowDurationField(setType) {
+  return setType === "amrap" || setType === "for_time";
+}
+
+function syncSetTypeFields() {
+  const setTypeInput = document.getElementById("set-type");
+  const durationField = document.getElementById("duration-field");
+  const durationInput = document.getElementById("duration-seconds");
+  const repsInput = document.getElementById("reps");
+  if (!setTypeInput || !durationField || !durationInput || !repsInput) {
+    return;
+  }
+  const showDuration = shouldShowDurationField(setTypeInput.value);
+  durationField.hidden = !showDuration;
+  durationInput.required = setTypeInput.value === "for_time";
+  repsInput.required = setTypeInput.value !== "for_time";
 }
 
 function setListItemHtml(item) {
@@ -115,7 +154,7 @@ async function refreshWorkout() {
           </div>
           <div class="shell-tile">
             <strong>Started</strong>
-            <span>${draft.started_at}</span>
+            <span>${formatDisplayDate(draft.started_at)}</span>
           </div>
           <div class="shell-tile">
             <strong>Writes pending</strong>
@@ -159,6 +198,13 @@ async function mutateLocalDraft(mutator) {
   return nextDraft;
 }
 
+function nextSequenceIndex(setRows) {
+  if (!Array.isArray(setRows) || setRows.length === 0) {
+    return 0;
+  }
+  return Math.max(...setRows.map((item) => Number(item.sequence_index ?? -1))) + 1;
+}
+
 async function upsertSet(event) {
   event.preventDefault();
   const workoutId = currentWorkoutId();
@@ -172,7 +218,6 @@ async function upsertSet(event) {
     payload: {
       set_id: setId,
       exercise_name: document.getElementById("exercise-name").value,
-      sequence_index: Number(document.getElementById("sequence-index").value),
       weight_kg: document.getElementById("weight-kg").value ? Number(document.getElementById("weight-kg").value) : null,
       reps: document.getElementById("reps").value ? Number(document.getElementById("reps").value) : null,
       duration_seconds: document.getElementById("duration-seconds").value ? Number(document.getElementById("duration-seconds").value) : null,
@@ -183,7 +228,12 @@ async function upsertSet(event) {
     draft.last_local_write_at = operation.client_timestamp;
     draft.pending_operation_ids = [...draft.pending_operation_ids, operation.operation_id];
     const existingIndex = draft.set_rows.findIndex((item) => item.id === setId);
-    const nextSet = { id: setId, ...operation.payload };
+    const existingSet = existingIndex >= 0 ? draft.set_rows[existingIndex] : null;
+    const nextSet = {
+      id: setId,
+      ...operation.payload,
+      sequence_index: existingSet ? existingSet.sequence_index : nextSequenceIndex(draft.set_rows),
+    };
     if (existingIndex >= 0) {
       draft.set_rows[existingIndex] = nextSet;
     } else {
@@ -193,6 +243,10 @@ async function upsertSet(event) {
   });
   await window.workoutDraftStorage.queueOperation(operation);
   await window.workoutDraftStorage.flushQueuedOperations();
+  document.getElementById("set-form").reset();
+  document.getElementById("set-id").value = "";
+  document.getElementById("set-type").value = "normal";
+  syncSetTypeFields();
 }
 
 async function deleteSelectedSet() {
@@ -218,6 +272,8 @@ async function deleteSelectedSet() {
   await window.workoutDraftStorage.flushQueuedOperations();
   document.getElementById("set-form").reset();
   document.getElementById("set-id").value = "";
+  document.getElementById("set-type").value = "normal";
+  syncSetTypeFields();
 }
 
 async function loadSuggestions() {
@@ -229,7 +285,7 @@ async function loadSuggestions() {
   const payload = await response.json();
   const datalist = document.getElementById("exercise-suggestions");
   datalist.innerHTML = payload.items
-    .map((item) => `<option value="${item.exercise_name}">${item.reason}</option>`)
+    .map((item) => `<option value="${item.exercise_name}"></option>`)
     .join("");
 }
 
@@ -310,6 +366,7 @@ document.getElementById("set-form")?.addEventListener("submit", upsertSet);
 document.getElementById("delete-set")?.addEventListener("click", deleteSelectedSet);
 document.getElementById("exercise-name")?.addEventListener("input", loadSuggestions);
 document.getElementById("weight-kg")?.addEventListener("input", updatePlateLoading);
+document.getElementById("set-type")?.addEventListener("change", syncSetTypeFields);
 document.querySelectorAll(".prefill-button").forEach((button) => {
   button.addEventListener("click", () => {
     void applyPrefill(button.dataset.lift);
@@ -333,11 +390,11 @@ document.getElementById("set-list")?.addEventListener("click", (event) => {
     }
     document.getElementById("set-id").value = selected.id;
     document.getElementById("exercise-name").value = selected.exercise_name;
-    document.getElementById("sequence-index").value = selected.sequence_index;
     document.getElementById("set-type").value = selected.set_type;
     document.getElementById("weight-kg").value = selected.weight_kg ?? "";
     document.getElementById("reps").value = selected.reps ?? "";
     document.getElementById("duration-seconds").value = selected.duration_seconds ?? "";
+    syncSetTypeFields();
   })();
 });
 
@@ -346,6 +403,7 @@ window.addEventListener("online", () => {
 });
 
 void loadWorkoutShell().then(refreshWorkout).then(renderTimer);
+syncSetTypeFields();
 window.setInterval(() => {
   void renderTimer();
 }, 1000);

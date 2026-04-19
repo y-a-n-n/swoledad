@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}History | Kinetic{% endblock %}
+{% block topbar_meta %}Training Archive{% endblock %}
+{% block content %}
+  <section class="page-header">
+    <p class="eyebrow">Training Archive</p>
+    <h1>History</h1>
+    <p class="page-copy">Finalized workouts only, newest first.</p>
+  </section>
+
+  <section class="history-list" id="history-list">
+    {% if history["items"] %}
+      {% for item in history["items"] %}
+        <article class="list-item history-card" data-workout-id="{{ item.id }}" data-workout-label="{{ item.type|replace('_', ' ')|title }} · {{ item.started_at|display_datetime }}">
+          <a class="history-link" href="/history/{{ item.id }}">
+            <div class="section-header">
+              <div>
+                <h2>{{ item.type|replace('_', ' ')|title }}</h2>
+                <p class="muted">{{ item.started_at|display_datetime }}</p>
+              </div>
+              <span class="pill">Open</span>
+            </div>
+
+            <div class="pill-row">
+              <span class="pill">{{ item.status|title }}</span>
+              <span class="pill">Source: {{ item.source|replace('_', ' ')|title }}</span>
+              {% if item.feeling_score %}
+                <span class="pill">Feels: {{ item.feeling_score }}/5</span>
+              {% endif %}
+              {% if item.notes_present %}
+                <span class="pill">Notes</span>
+              {% endif %}
+            </div>
+
+            {% set is_run = item.type in ["run", "running"] %}
+            {% set is_strength = item.type == "strength" %}
+            <div class="history-stats-grid{% if is_strength %} history-stats-grid--strength{% endif %}">
+              {% if is_run %}
+                <div class="number-band">
+                  <span class="metric-label">Distance</span>
+                  <strong>
+                    {% if item.linked_external_metrics and item.linked_external_metrics.distance_meters is not none %}
+                      {{ (item.linked_external_metrics.distance_meters / 1000)|round(1) }} km
+                    {% else %}
+                      —
+                    {% endif %}
+                  </strong>
+                </div>
+                <div class="number-band">
+                  <span class="metric-label">Pace</span>
+                  <strong>
+                    {% if item.linked_external_metrics and item.linked_external_metrics.pace_seconds_per_km is not none %}
+                      {{ item.linked_external_metrics.pace_seconds_per_km|mmss }}/km
+                    {% else %}
+                      —
+                    {% endif %}
+                  </strong>
+                </div>
+              {% elif is_strength %}
+                <div class="number-band">
+                  <span class="metric-label">Est. 1RM</span>
+                  <strong>
+                    {% if item.big3_estimated_1rm_kg is not none %}
+                      {{ item.big3_estimated_1rm_kg }} kg
+                    {% else %}
+                      —
+                    {% endif %}
+                  </strong>
+                </div>
+                <div class="number-band">
+                  <span class="metric-label">Intensity</span>
+                  <strong>
+                    {% if item.linked_external_metrics and item.linked_external_metrics.calories_per_minute is not none %}
+                      {{ item.linked_external_metrics.calories_per_minute }} cal/min
+                    {% else %}
+                      —
+                    {% endif %}
+                  </strong>
+                </div>
+                <div class="number-band">
+                  <span class="metric-label">Total weight</span>
+                  <strong>
+                    {% if item.total_weight_moved_kg is not none %}
+                      {{ item.total_weight_moved_kg }} kg
+                    {% else %}
+                      —
+                    {% endif %}
+                  </strong>
+                </div>
+              {% else %}
+                <div class="number-band">
+                  <span class="metric-label">Exercises</span>
+                  <strong>{{ item.exercise_count }}</strong>
+                </div>
+                <div class="number-band">
+                  <span class="metric-label">Sets</span>
+                  <strong>{{ item.set_count }}</strong>
+                </div>
+              {% endif %}
+            </div>
+
+            {% if item.linked_external_metrics %}
+              <div class="pill-row">
+                {% if item.linked_external_metrics.distance_meters is not none %}
+                  <span class="pill">{{ item.linked_external_metrics.distance_meters }} m</span>
+                {% endif %}
+                {% if item.linked_external_metrics.duration_seconds is not none %}
+                  <span class="pill">{{ item.linked_external_metrics.duration_seconds }} sec</span>
+                {% endif %}
+                {% if item.linked_external_metrics.avg_heart_rate is not none %}
+                  <span class="pill">Avg HR: {{ item.linked_external_metrics.avg_heart_rate }}</span>
+                {% endif %}
+                {% if item.linked_external_metrics.pace_seconds_per_km is not none %}
+                  <span class="pill">Pace: {{ item.linked_external_metrics.pace_seconds_per_km }}</span>
+                {% endif %}
+              </div>
+            {% endif %}
+          </a>
+          <div class="history-card-actions">
+            <button type="button" class="history-delete-button soft-button" data-delete-workout="{{ item.id }}">
+              Delete
+            </button>
+          </div>
+        </article>
+      {% endfor %}
+    {% else %}
+      <section class="card history-empty-state" id="history-empty-state">
+        <p class="page-copy">No finalized workouts yet.</p>
+      </section>
+    {% endif %}
+  </section>
+
+  <div class="history-modal-shell hidden" id="history-delete-modal" aria-hidden="true">
+    <div class="history-modal-backdrop" data-close-modal></div>
+    <section class="card history-modal" role="dialog" aria-modal="true" aria-labelledby="history-delete-title">
+      <p class="eyebrow">Delete Workout</p>
+      <h2 id="history-delete-title">Delete this workout?</h2>
+      <p class="page-copy" id="history-delete-copy">This removes the workout from history.</p>
+      <p class="status error history-modal-error hidden" id="history-delete-error" role="alert"></p>
+      <div class="button-row history-modal-actions">
+        <button type="button" class="soft-button" id="history-delete-cancel">Cancel</button>
+        <button type="button" class="history-delete-confirm" id="history-delete-confirm">Delete workout</button>
+      </div>
+    </section>
+  </div>
+{% endblock %}
+{% block page_scripts %}
+  <script src="{{ url_for('static', filename='history.js') }}"></script>
+{% endblock %}

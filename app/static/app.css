@@ -390,18 +390,21 @@ th,
 
 .hero-start button[type="submit"] {
   width: 100%;
-  min-height: min(48vh, 24rem);
+  min-height: min(24vh, 12rem);
   justify-content: flex-end;
   align-items: flex-start;
   padding: 1.5rem;
   background: var(--accent);
   color: var(--on-accent);
   text-align: left;
+  overflow: hidden;
 }
 
 .hero-button-copy {
   display: block;
   font-size: clamp(3.5rem, 13vw, 8rem);
+  max-width: 100%;
+  line-height: 0.8;
 }
 
 .hero-grid .card,
@@ -598,6 +601,10 @@ textarea {
   gap: var(--space-4);
 }
 
+.duration-field[hidden] {
+  display: none;
+}
+
 .workout-primary-form label input,
 .workout-primary-form label select {
   font-family: "Space Grotesk", sans-serif;
@@ -618,6 +625,17 @@ textarea {
   width: 100%;
   min-height: 5.5rem;
   font-size: 1.2rem;
+}
+
+.quick-prefill-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.quick-prefill-actions .prefill-button {
+  width: 100%;
+  padding-inline: 0.5rem;
 }
 
 .rest-panel {
@@ -656,6 +674,11 @@ textarea {
 
 .workout-secondary .details-body {
   padding: 0 var(--space-4) var(--space-4);
+}
+
+.workout-status {
+  display: grid;
+  gap: var(--space-4);
 }
 
 .shell-grid,
@@ -717,6 +740,111 @@ textarea {
 .analytics-stack {
   display: grid;
   gap: var(--space-6);
+}
+
+.history-list,
+.history-detail-layout,
+.history-set-list,
+.history-detail-hero {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.history-link {
+  display: grid;
+  gap: var(--space-4);
+  text-decoration: none;
+  transition: background 100ms ease, color 100ms ease;
+}
+
+.history-card {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.history-link:hover {
+  background: var(--surface-container-high);
+}
+
+.history-card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.history-delete-button,
+.history-delete-confirm {
+  background: #341516;
+  color: var(--error);
+}
+
+.history-delete-button:hover,
+.history-delete-confirm:hover {
+  background: #512021;
+  color: #ffd7d2;
+}
+
+.history-modal-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: var(--space-3);
+}
+
+.history-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.history-modal {
+  position: relative;
+  z-index: 1;
+  width: min(34rem, calc(100vw - 2rem));
+  display: grid;
+  gap: var(--space-3);
+}
+
+.history-modal-actions {
+  justify-content: flex-end;
+}
+
+.history-modal-error {
+  margin: 0;
+}
+
+.history-empty-state {
+  min-height: 12rem;
+  place-items: center;
+}
+
+.hidden {
+  display: none !important;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+.history-stats-grid {
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  background: var(--surface-container-high);
+}
+
+.history-stats-grid--strength {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+.run-metrics-card .history-stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.run-metrics-card .number-band strong {
+  font-size: clamp(2.6rem, 8vw, 4.25rem);
 }
 
 .analytics-big3 {
@@ -848,5 +976,9 @@ pre {
   .workout-primary-form label input,
   .workout-primary-form label select {
     font-size: clamp(2rem, 14vw, 4rem);
+  }
+
+  .quick-prefill-actions {
+    grid-template-columns: 1fr;
   }
 }

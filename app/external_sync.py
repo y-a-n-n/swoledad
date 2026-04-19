@@ -40,7 +40,7 @@ def normalize_garmin_activity(payload: dict[str, Any]) -> dict[str, Any]:
     try:
         provider_activity_id = str(payload["activityId"])
         activity_name = str(payload.get("activityType", {}).get("typeKey") or payload.get("activityType", "unknown"))
-        started_at = payload["startTimeGMT"]
+        started_at = _normalize_garmin_timestamp(payload["startTimeGMT"])
     except KeyError as exc:
         raise GarminParseError(f"missing Garmin field: {exc.args[0]}") from exc
     normalized_type = _normalize_activity_type(activity_name)
@@ -51,7 +51,7 @@ def normalize_garmin_activity(payload: dict[str, Any]) -> dict[str, Any]:
         "activity_type": normalized_type,
         "status": payload.get("existing_status") or "pending_review",
         "started_at": started_at,
-        "ended_at": payload.get("endTimeGMT"),
+        "ended_at": _normalize_garmin_timestamp(payload.get("endTimeGMT")),
         "duration_seconds": duration_seconds,
         "distance_meters": payload.get("distance"),
         "calories": payload.get("calories"),
@@ -327,6 +327,24 @@ def _normalize_activity_type(type_key: str) -> str:
     if normalized == "strength_training":
         return "strength"
     return normalized
+
+
+def _normalize_garmin_timestamp(value: Any) -> str | None:
+    if value in {None, ""}:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    try:
+        if "T" in raw and ("Z" in raw or "+" in raw[10:] or "-" in raw[10:]):
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00")).astimezone(timezone.utc)
+        else:
+            # Garmin "startTimeGMT"/"endTimeGMT" may arrive as naive strings like
+            # "2023-07-01 05:16:32"; treat those as UTC rather than local machine time.
+            parsed = datetime.fromisoformat(raw.replace(" ", "T")).replace(tzinfo=timezone.utc)
+    except ValueError as exc:
+        raise GarminParseError(f"invalid Garmin timestamp: {raw}") from exc
+    return _to_iso(parsed)
 
 
 def _suggest_workout_id(started_at: str, candidates: list[dict[str, Any]]) -> str | None:

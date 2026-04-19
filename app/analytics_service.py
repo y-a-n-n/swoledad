@@ -15,6 +15,26 @@ def calculate_estimated_one_rm(weight_kg: float, reps: int) -> float:
     return round(float(weight_kg) * (1 + (int(reps) / 30)), 2)
 
 
+def compute_strength_summary_from_sets(sets: list[dict[str, Any]]) -> dict[str, Any]:
+    """Best Big 3 estimated 1RM (Epley, same as trends) and total weight × reps volume."""
+    big3_names = set(BIG3_NAMES.values())
+    total_volume = 0.0
+    best_big3_e1rm: float | None = None
+    for s in sets:
+        w, r = s.get("weight_kg"), s.get("reps")
+        if w is None or r is None:
+            continue
+        total_volume += float(w) * int(r)
+        if s.get("exercise_name") in big3_names:
+            e1 = calculate_estimated_one_rm(float(w), int(r))
+            if best_big3_e1rm is None or e1 > best_big3_e1rm:
+                best_big3_e1rm = e1
+    return {
+        "total_weight_moved_kg": round(total_volume, 1),
+        "big3_estimated_1rm_kg": best_big3_e1rm,
+    }
+
+
 def calculate_calories_per_minute(calories: int | None, duration_seconds: int | None) -> float | None:
     if calories is None or duration_seconds is None or duration_seconds <= 0:
         return None

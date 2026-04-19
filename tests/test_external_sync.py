@@ -46,6 +46,17 @@ def test_normalize_garmin_payload():
     assert normalized["status"] == "pending_review"
 
 
+def test_normalize_garmin_payload_treats_space_separated_gmt_values_as_utc():
+    normalized = normalize_garmin_activity(
+        _activity(
+            started_at="2023-07-01 23:26:26",
+        )
+        | {"endTimeGMT": "2023-07-01 23:57:06"}
+    )
+    assert normalized["started_at"] == "2023-07-01T23:26:26Z"
+    assert normalized["ended_at"] == "2023-07-01T23:57:06Z"
+
+
 def test_window_calculation_with_and_without_checkpoint():
     first = calculate_sync_window(None, "2026-03-29T10:00:00Z")
     second = calculate_sync_window("2026-03-28T10:00:00Z", "2026-03-29T10:00:00Z")
