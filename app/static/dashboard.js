@@ -137,13 +137,13 @@ async function removeDraft(workoutId) {
   });
 }
 
-async function reconcileDraftFromServer(workoutId, appliedStatuses) {
+async function reconcileDraftFromServer(workoutId, appliedStatuses, rejectedStatuses) {
   const draft = await loadDraft(workoutId);
   if (!draft) {
     return;
   }
-  const remainingOperationIds = draft.pending_operation_ids.filter((id) => !appliedStatuses.has(id));
-  if (remainingOperationIds.length === 0 && draft.status === "finalized-pending-sync") {
+  const remainingOperationIds = draft.pending_operation_ids.filter((id) => !appliedStatuses.has(id) && !rejectedStatuses.has(id));
+  if (remainingOperationIds.length === 0 && draft.status === "finalized-pending-sync" && appliedStatuses.size > 0) {
     await removeDraft(workoutId);
     return;
   }
@@ -195,20 +195,24 @@ async function flushQueuedOperations() {
   }
   const payload = await response.json();
   const resolvedOperationIds = new Set();
+  const rejectedOperationIds = new Set();
   const affectedWorkoutIds = new Set();
   for (const ack of payload.acks) {
-    if (ack.status === "applied" || ack.status === "rejected") {
+    if (ack.status === "applied") {
       resolvedOperationIds.add(ack.operation_id);
+      await removeQueuedOperation(ack.operation_id);
+    } else if (ack.status === "rejected") {
+      rejectedOperationIds.add(ack.operation_id);
       await removeQueuedOperation(ack.operation_id);
     }
   }
   for (const operation of operations) {
-    if (resolvedOperationIds.has(operation.operation_id)) {
+    if (resolvedOperationIds.has(operation.operation_id) || rejectedOperationIds.has(operation.operation_id)) {
       affectedWorkoutIds.add(operation.workout_id);
     }
   }
   for (const workoutId of affectedWorkoutIds) {
-    await reconcileDraftFromServer(workoutId, resolvedOperationIds);
+    await reconcileDraftFromServer(workoutId, resolvedOperationIds, rejectedOperationIds);
   }
   return payload.acks.every((ack) => ack.status === "applied");
 }
